@@ -73,6 +73,8 @@ To load the extension in Chrome:
 
 The popup controls the active supported EA tab. The demo has its own controls and session. Diagnostics update when you use a control or select **Refresh diagnostics**. Live capture currently reports unverified selectors and extracts no player fields. See the [feasibility report](docs/feasibility.md) for exact live inspection steps and limitations.
 
+GitHub Actions runs typecheck, Vitest, and the production build on pull requests and pushes to `main`. A separate job runs the synthetic Chromium smoke test. Live DOM and account-policy verification remain tracked in [issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3).
+
 For the automated browser demonstration:
 
 ```sh

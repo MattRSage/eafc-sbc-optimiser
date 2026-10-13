@@ -17,7 +17,12 @@ export function mount(send: (command: string) => Promise<Snapshot>) {
     close();
     try {
       snapshot = await send(command);
-      get('status').textContent = snapshot.active ? 'Capture enabled in this tab.' : 'Capture disabled in this tab.';
+      const live = snapshot.source === 'live-unverified';
+      get('status').textContent = live
+        ? `Observer ${snapshot.active ? 'enabled' : 'disabled'}, but no verified EA selectors. 0 cards captured.`
+        : `Synthetic capture ${snapshot.active ? 'enabled' : 'disabled'} in this tab.`;
+      get('start').textContent = live ? 'Enable observer' : 'Enable capture';
+      get('stop').textContent = live ? 'Disable observer' : 'Disable capture';
       get('counts').textContent = `${snapshot.candidates} visible candidates at last scan · ${snapshot.observations.length} distinct descriptions · ${snapshot.sightings} sightings${snapshot.capped ? ' · 500-description limit reached' : ''}. Owned instances: unknown.`;
       get('confidence').textContent = snapshot.source === 'synthetic'
         ? 'Synthetic fixture only. Live extraction confidence: unverified.'

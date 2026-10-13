@@ -39,6 +39,8 @@ EA may prohibit extensions or extraction even when navigation is manual. This sp
 
 ## Remaining manual verification
 
+Tracked in [issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3). Signed-in origin/path verification and a current EA policy review remain prerequisites for live use. The manifest scope is unchanged.
+
 1. Decide whether live-account inspection is acceptable under EA's current policies. Do not provide credentials or session data to Codex.
 2. Load the production extension using the README instructions. Keep capture disabled.
 3. Manually open the official Web App. Check the final hostname and path in the address bar without copying query parameters. If outside the configured path, record only the hostname/path and review a narrow manifest change.
