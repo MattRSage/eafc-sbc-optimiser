@@ -1,0 +1,30 @@
+{
+  "format": "sbc-dom-observations-v1",
+  "source": "synthetic",
+  "confidence": "synthetic-only",
+  "ownership": "unknown",
+  "sightings": 4,
+  "truncated": false,
+  "observations": [
+    {
+      "name": null,
+      "rating": "84",
+      "position": "CM",
+      "club": "Example United",
+      "league": "Demo League",
+      "nation": "Example Nation",
+      "cardType": "Gold",
+      "visibleId": null
+    },
+    {
+      "name": null,
+      "rating": "81",
+      "position": "GK",
+      "club": null,
+      "league": null,
+      "nation": null,
+      "cardType": null,
+      "visibleId": null
+    }
+  ]
+}

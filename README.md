@@ -2,7 +2,7 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** Discovery / proof of concept. No working importer or solver yet.
+> **Status:** Phase 1 extension shell and synthetic DOM demo. Live selectors remain unverified. No owned-card importer or solver yet.
 
 ## Goal
 
@@ -52,6 +52,37 @@ The stack is deliberately provisional: test the DOM feasibility before building 
 
 ## Getting started
 
-The first implementation task is tracked in GitHub Issues. Use Codex against this repository, follow [AGENTS.md](AGENTS.md), and implement Phase 1 on a separate branch/PR.
+Use Node.js 24 LTS and npm.
+
+```sh
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
+To load the extension in Chrome:
+
+1. Open `chrome://extensions` and enable **Developer mode**.
+2. Select **Load unpacked** and choose `.output/chrome-mv3` in this repository.
+3. Open the extension popup and select **Open synthetic demo**.
+4. Select **Enable capture** in the demo. Expect two distinct descriptions and two sightings.
+5. Select **Add another Alex card**, then **Refresh diagnostics**. Expect two descriptions and three sightings.
+6. Select **Disable capture** to stop observation. Select **Clear session** to stop and erase the session.
+7. Select **Review JSON export**, deselect fields to redact, inspect the preview, then select **Download reviewed JSON**.
+
+The popup controls the active supported EA tab. The demo has its own controls and session. Diagnostics update when you use a control or select **Refresh diagnostics**. Live capture currently reports unverified selectors and extracts no player fields. See the [feasibility report](docs/feasibility.md) for exact live inspection steps and limitations.
+
+GitHub Actions runs typecheck, Vitest, and the production build on pull requests and pushes to `main`. A separate job runs the synthetic Chromium smoke test. Live DOM and account-policy verification remain tracked in [issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3).
+
+For the automated browser demonstration:
+
+```sh
+npx playwright install chromium
+npm run build
+npm run test:browser
+```
+
+The browser test uses a temporary profile and synthetic data only. It records a reviewed JSON export and screenshot in ignored `test-results/`. For iterative extension development, run `npm run dev`; use the production build for the documented permission and network boundaries.
 
 No EA credentials or session data should ever be committed to this repository.
