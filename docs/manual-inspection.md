@@ -1,6 +1,6 @@
 # Collect a sanitised Web App DOM example
 
-Use this guide to provide evidence for [Issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3). Live extraction remains disabled until reviewed evidence supports selectors and the account-policy question is resolved. See the [feasibility decision](feasibility.md).
+Use this guide to provide evidence for [Issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3). A narrow profile now supports the supplied player-list main and bio layouts. More evidence is needed for other layouts, browsing behaviour, and owned-card identity. Account-policy acceptability remains unresolved. See the [feasibility decision](feasibility.md).
 
 ## Prepare Chrome
 
@@ -80,7 +80,7 @@ Details-panel relationship:
 Unexamined cases:
 ```
 
-The next implementation can use these examples to test a narrow selector profile. If visible text cannot distinguish owned copies, the product must keep observations separate from inventory and require manual ownership confirmation. Missing fields remain unknown.
+Further examples can extend the narrow selector profile only after review and fixture tests. If visible text cannot distinguish owned copies, the product must keep observations separate from inventory and require manual ownership confirmation. Missing fields remain unknown.
 
 ## Reproduce observer behaviour without an EA account
 

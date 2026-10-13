@@ -2,7 +2,7 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** Issue #3 investigation fallback implemented. Public FC 27 entry point confirmed; authenticated card markup and owned-card identity remain unverified. Live extraction stays disabled. No owned-card importer or solver yet.
+> **Status:** Opt-in player-list extraction supports one user-supplied card layout in main and bio views. It records partial visible-text observations. Owned-card identity and broader layout coverage remain unverified. No owned-card importer or solver yet.
 
 ## Goal
 
@@ -52,7 +52,7 @@ The stack is deliberately provisional: test the DOM feasibility before building 
 
 ## Provide live DOM evidence
 
-Follow the [Chrome DevTools inspection guide](docs/manual-inspection.md) to provide a few manually transcribed card examples with invented values, plus notes on scrolling, filtering, pagination, and node reuse. Never share raw page HTML or credentials. The [feasibility decision](docs/feasibility.md) separates public URL evidence from the still-unknown signed-in layout and account-policy questions.
+Follow the [Chrome DevTools inspection guide](docs/manual-inspection.md) to provide a few manually transcribed card examples with invented values, plus notes on scrolling, filtering, pagination, and node reuse. Never share raw page HTML or credentials. The [feasibility decision](docs/feasibility.md) records the supplied layout evidence, remaining browsing and identity gaps, and account-policy questions.
 
 The synthetic demo now includes **Recycle first card** and **Hide or show first card** controls. They test manual browsing scenarios without an EA account. Tradeability and SBC storage labels are supported in synthetic fixtures; unavailable values remain unknown. No description or sighting count is an owned quantity.
 
@@ -77,7 +77,7 @@ To load the extension in Chrome:
 6. Select **Disable capture** to stop observation. Select **Clear session** to stop and erase the session.
 7. Select **Review JSON export**, deselect fields to redact, inspect the preview, then select **Download reviewed JSON**.
 
-The popup controls the active supported EA tab. The demo has its own controls and session. Diagnostics update when you use a control or select **Refresh diagnostics**. Live capture currently reports unverified selectors and extracts no player fields. See the [feasibility report](docs/feasibility.md) for exact live inspection steps and limitations.
+The popup controls the active supported EA tab. The demo has its own controls and session. Diagnostics update when you use a control or select **Refresh diagnostics**. Live capture reads name, rating, and position in the supplied main layout, or name, position, and nation/league/club abbreviations in bio view. Hidden fields remain unknown. The views produce separate partial observations; they are not merged into owned cards. See the [feasibility report](docs/feasibility.md) for exact live inspection steps and limitations.
 
 GitHub Actions runs typecheck, Vitest, and the production build on pull requests and pushes to `main`. A separate job runs the synthetic Chromium smoke test. Live DOM and account-policy verification remain tracked in [issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3).
 

@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import fixture from './fixtures/cards.html?raw';
-import { Capture, exportJson, fields, fixtureProfile, liveProfile, parseCard } from '../src/capture';
+import { Capture, exportJson, fields, fixtureProfile, parseCard } from '../src/capture';
 
 let capture: Capture;
 beforeEach(() => {
@@ -82,7 +82,7 @@ describe('capture lifecycle and observations', () => {
   });
   it('does not query live cards without verified selectors', () => {
     const query = vi.spyOn(document.body, 'querySelectorAll');
-    const live = new Capture(document.body, liveProfile);
+    const live = new Capture(document.body, null);
     live.start();
     expect(query).not.toHaveBeenCalled();
     expect(live.snapshot()).toMatchObject({ active: true, source: 'live-unverified', observations: [] });
