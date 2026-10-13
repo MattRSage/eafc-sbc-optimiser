@@ -1,4 +1,4 @@
-export const fields = ['name', 'rating', 'position', 'club', 'league', 'nation', 'cardType', 'visibleId'] as const;
+export const fields = ['name', 'rating', 'position', 'club', 'league', 'nation', 'cardType', 'tradeable', 'sbcStorage', 'visibleId'] as const;
 export type Field = typeof fields[number];
 export type Card = Record<Field, string | null>;
 export interface Profile { candidate: string; fields: Partial<Record<Field, string>> }
@@ -96,6 +96,11 @@ export class Capture {
       if (!visible(element)) continue;
       const card = parseCard(element, this.profile);
       const key = JSON.stringify(card);
+      // Empty recycled placeholders are candidates, but provide no observation.
+      if (fields.every(field => card[field] === null)) {
+        next.set(element, '');
+        continue;
+      }
       if (this.current.get(element) !== key) this.sightings++;
       next.set(element, key);
       if (this.observations.has(key)) continue;

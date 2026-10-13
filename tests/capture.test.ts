@@ -46,6 +46,40 @@ describe('capture lifecycle and observations', () => {
     expect(capture.snapshot().observations).toHaveLength(3);
     expect(capture.snapshot().sightings).toBe(3);
   });
+  it('retains descriptions through empty placeholders, recycling, and revisits', async () => {
+    capture.start();
+    const element = document.body.firstElementChild!;
+    const original = element.innerHTML;
+    element.replaceChildren();
+    await settle();
+    expect(capture.snapshot()).toMatchObject({ candidates: 2, sightings: 2 });
+    expect(capture.snapshot().observations).toHaveLength(2);
+    element.innerHTML = '<span data-field="name">Taylor Fixture</span>';
+    await settle();
+    expect(capture.snapshot().observations[2]).toMatchObject({ name: 'Taylor Fixture', club: null, tradeable: null, sbcStorage: null, visibleId: null });
+    element.remove();
+    await settle();
+    expect(capture.snapshot().observations).toHaveLength(3);
+    element.innerHTML = original;
+    document.body.append(element);
+    await settle();
+    expect(capture.snapshot()).toMatchObject({ candidates: 2, sightings: 4 });
+    expect(capture.snapshot().observations).toHaveLength(3);
+  });
+  it('observes text-node edits and visibility changes without counting ownership', async () => {
+    capture.start();
+    const card = document.body.firstElementChild as HTMLElement;
+    card.querySelector('[data-field="name"]')!.firstChild!.nodeValue = 'Renamed Fixture';
+    await settle();
+    expect(capture.snapshot().observations).toHaveLength(3);
+    card.hidden = true;
+    await settle();
+    expect(capture.snapshot().candidates).toBe(1);
+    card.hidden = false;
+    await settle();
+    expect(capture.snapshot()).toMatchObject({ candidates: 2, sightings: 4 });
+    expect(capture.snapshot().observations).toHaveLength(3);
+  });
   it('does not query live cards without verified selectors', () => {
     const query = vi.spyOn(document.body, 'querySelectorAll');
     const live = new Capture(document.body, liveProfile);
@@ -63,6 +97,17 @@ describe('capture lifecycle and observations', () => {
 });
 
 describe('parser and export boundary', () => {
+  it('extracts all supported visible fixture fields without interpreting identity or status', () => {
+    expect(parseCard(document.body.firstElementChild!, fixtureProfile)).toEqual({
+      name: 'Alex Example', rating: '84', position: 'CM', club: 'Example United',
+      league: 'Demo League', nation: 'Example Nation', cardType: 'Gold',
+      tradeable: 'Untradeable', sbcStorage: 'In SBC storage', visibleId: 'DEMO-1',
+    });
+    const card = document.body.children[1]!;
+    card.setAttribute('data-tradeable', 'true');
+    card.setAttribute('data-instance-id', 'NOT-VISIBLE');
+    expect(parseCard(card, fixtureProfile)).toMatchObject({ tradeable: null, sbcStorage: null, visibleId: null });
+  });
   it('reports unknown fields and coverage', () => {
     capture.start();
     expect(capture.snapshot().observations[1]).toMatchObject({ name: 'Sam Sample', club: null, visibleId: null });

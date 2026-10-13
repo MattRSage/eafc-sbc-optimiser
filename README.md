@@ -2,7 +2,7 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** Phase 1 extension shell and synthetic DOM demo. Live selectors remain unverified. No owned-card importer or solver yet.
+> **Status:** Issue #3 investigation fallback implemented. Public FC 27 entry point confirmed; authenticated card markup and owned-card identity remain unverified. Live extraction stays disabled. No owned-card importer or solver yet.
 
 ## Goal
 
@@ -49,6 +49,12 @@ The stack is deliberately provisional: test the DOM feasibility before building 
 - JSON export that excludes credentials, cookies, URLs with tokens and unrelated personal data.
 - Tests using **sanitised, synthetic DOM fixtures**, and a short report describing missing fields and extraction limitations.
 - If the card UI is not exposed via usable DOM elements, report the limitation instead of reaching into private app APIs.
+
+## Provide live DOM evidence
+
+Follow the [Chrome DevTools inspection guide](docs/manual-inspection.md) to provide a few manually transcribed card examples with invented values, plus notes on scrolling, filtering, pagination, and node reuse. Never share raw page HTML or credentials. The [feasibility decision](docs/feasibility.md) separates public URL evidence from the still-unknown signed-in layout and account-policy questions.
+
+The synthetic demo now includes **Recycle first card** and **Hide or show first card** controls. They test manual browsing scenarios without an EA account. Tradeability and SBC storage labels are supported in synthetic fixtures; unavailable values remain unknown. No description or sighting count is an owned quantity.
 
 ## Getting started
 

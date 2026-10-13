@@ -12,3 +12,14 @@ mount(async command => {
 });
 document.querySelector<HTMLButtonElement>('#add')!.onclick = () => cards.append(cards.firstElementChild!.cloneNode(true));
 document.querySelector<HTMLButtonElement>('#remove')!.onclick = () => { if (cards.children.length > 1) cards.lastElementChild!.remove(); };
+document.querySelector<HTMLButtonElement>('#recycle')!.onclick = () => {
+  const first = cards.firstElementChild!;
+  const source = document.createElement('template');
+  source.innerHTML = fixture;
+  const index = first.querySelector('[data-field="name"]')?.textContent === 'Alex Example' ? 1 : 0;
+  first.replaceChildren(...source.content.children[index]!.childNodes);
+};
+document.querySelector<HTMLButtonElement>('#visibility')!.onclick = () => {
+  const first = cards.firstElementChild as HTMLElement;
+  first.hidden = !first.hidden;
+};
