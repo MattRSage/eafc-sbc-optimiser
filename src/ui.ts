@@ -1,4 +1,4 @@
-import { exportJson, fields, type Field, type Snapshot } from './capture';
+import { exportJson, exportCandidatesJson, fields, type Field, type Snapshot } from './capture';
 import './style.css';
 export function mount(send: (command: string) => Promise<Snapshot>) {
   const host = document.querySelector<HTMLElement>('#app')!;
@@ -7,7 +7,7 @@ export function mount(send: (command: string) => Promise<Snapshot>) {
     <p id="status" role="status">Capture is off.</p>
     <div class="buttons"><button id="start">Enable capture</button><button id="stop">Disable capture</button><button id="clear">Clear session</button><button id="refresh">Refresh diagnostics</button></div>
     <p id="counts"></p><p id="confidence"></p><ul id="coverage"></ul>
-    <button id="review">Review JSON export</button>
+    <ul id="candidate-list"></ul><button id="review">Review JSON export</button><button id="review-candidates">Review candidate JSON export</button>
     <section id="review-panel" hidden><h2>Review and redact</h2><p>Uncheck fields to redact them. Check the exact preview before downloading. Identifiers are excluded by default.</p><div id="fields"></div><pre id="preview"></pre><button id="download">Download reviewed JSON</button><button id="cancel">Cancel</button></section>`;
   const get = <T extends HTMLElement>(id: string) => host.querySelector<T>(`#${id}`)!;
   let snapshot: Snapshot | undefined;
@@ -17,6 +17,15 @@ export function mount(send: (command: string) => Promise<Snapshot>) {
     close();
     try {
       snapshot = await send(command);
+      get('candidate-list').replaceChildren(...snapshot.reconciled.map(candidate => {
+        const item = document.createElement('li');
+        item.textContent = `${candidate.values.name ?? 'Unknown name'}: provisional, location ${candidate.location}; ${candidate.review.join(', ')}. `;
+        const button = document.createElement('button');
+        button.textContent = 'Mark for review';
+        button.disabled = candidate.review.includes('user-review');
+        button.onclick = () => void update(`review:${candidate.id}`);
+        item.append(button); return item;
+      }));
       const live = snapshot.source !== 'synthetic';
       get('status').textContent = snapshot.source === 'live-unverified'
         ? `Observer ${snapshot.active ? 'enabled' : 'disabled'}, but no verified EA selectors. 0 cards captured.`
@@ -25,7 +34,7 @@ export function mount(send: (command: string) => Promise<Snapshot>) {
           : `Synthetic capture ${snapshot.active ? 'enabled' : 'disabled'} in this tab.`;
       get('start').textContent = live ? 'Enable observer' : 'Enable capture';
       get('stop').textContent = live ? 'Disable observer' : 'Disable capture';
-      get('counts').textContent = `${snapshot.candidates} visible candidates at last scan · ${snapshot.observations.length} distinct descriptions · ${snapshot.sightings} sightings${snapshot.capped ? ' · 500-description limit reached' : ''}. Owned instances: unknown.`;
+      get('counts').textContent = `${snapshot.candidates} visible candidates at last scan · ${snapshot.observations.length} distinct descriptions · ${snapshot.sightings} sightings${snapshot.capped ? ' · 500-sample or description limit reached' : ''}. ${snapshot.rawObservations.length} raw partial observations · ${snapshot.reconciled.length} reconciled candidates · ${snapshot.confirmed.length} confirmed owned items. Owned instances: unknown.`;
       get('confidence').textContent = snapshot.source === 'synthetic'
         ? 'Synthetic fixture only. Live extraction confidence: unverified.'
         : snapshot.source === 'live-sample'
@@ -46,7 +55,7 @@ export function mount(send: (command: string) => Promise<Snapshot>) {
     }
   };
   for (const command of ['start', 'stop', 'clear', 'refresh']) get(command).onclick = () => void update(command === 'refresh' ? 'status' : command);
-  get('review').onclick = () => {
+  const review = (candidateExport: boolean) => {
     if (!snapshot) return;
     const frozen = snapshot;
     get('fields').replaceChildren(...fields.map(field => {
@@ -57,12 +66,14 @@ export function mount(send: (command: string) => Promise<Snapshot>) {
     }));
     const preview = () => {
       const selected = [...get('fields').querySelectorAll<HTMLInputElement>('input:checked')].map(input => input.value as Field);
-      reviewed = exportJson(frozen, selected);
+      reviewed = candidateExport ? exportCandidatesJson(frozen, selected) : exportJson(frozen, selected);
       get('preview').textContent = reviewed;
     };
     get('fields').onchange = preview;
     preview(); get('review-panel').hidden = false;
   };
+  get('review').onclick = () => review(false);
+  get('review-candidates').onclick = () => review(true);
   get('cancel').onclick = close;
   get('download').onclick = () => {
     if (!reviewed) return;
