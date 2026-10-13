@@ -18,7 +18,7 @@ export interface CardCandidate {
   provenance: Record<Field, { observations: number[]; confidence: 'observed' | 'unknown' }>;
   location: Location;
   confirmation: 'unconfirmed';
-  review: ('identity-unverified' | 'incomplete' | 'same-name' | 'conflict' | 'user-review')[];
+  review: ('identity-unverified' | 'incomplete' | 'same-name' | 'conflict' | 'unsettled' | 'user-review')[];
 }
 // Only an explicit confirmation can supply an exact version; DOM correlation IDs cannot.
 export interface InventoryItem {

@@ -63,6 +63,7 @@ export interface Snapshot {
   observations: Card[];
   coverage: Record<Field, number>;
   rawObservations: RawObservation[];
+  quarantinedCorrelations: number[];
   reconciled: CardCandidate[];
   confirmed: InventoryItem[];
 }
@@ -73,9 +74,11 @@ export class Capture {
   private current = new Map<Element, string>();
   private observations = new Map<string, Card>();
   private raw: RawObservation[] = [];
-  private generations = new Map<Element, { id: number; values: Card; due: number }>();
+  private generations = new Map<Element, { id: number; values: Card; due: number; afterConflict: boolean }>();
   private published = new Set<number>();
   private conflicts = new Set<number>();
+  private quarantined = new Set<number>();
+  private unsettled = new Set<number>();
   private flagged = new Set<number>();
   private nextGeneration = 1;
   private settling?: ReturnType<typeof setTimeout>;
@@ -117,7 +120,7 @@ export class Capture {
     this.observer?.disconnect();
     clearTimeout(this.settling);
     this.settling = undefined;
-    this.generations.clear();
+    for (const element of this.generations.keys()) this.closeGeneration(element);
     clearTimeout(this.timer);
     this.timer = undefined;
     window.removeEventListener('scroll', this.schedule, true);
@@ -130,15 +133,24 @@ export class Capture {
     this.raw = [];
     this.published.clear();
     this.conflicts.clear();
+    this.quarantined.clear();
+    this.unsettled.clear();
     this.flagged.clear();
     this.nextGeneration = 1;
     this.observations.clear();
     this.sightings = 0;
     this.capped = false;
   }
-  private closeGeneration(element: Element) {
+  private closeGeneration(element: Element, superseded = false) {
     const generation = this.generations.get(element);
-    if (generation) this.published.add(generation.id);
+    if (generation) {
+      const pending = !this.published.has(generation.id) && generation.due > Date.now();
+      if (superseded && generation.afterConflict && pending) this.quarantined.add(generation.id);
+      else {
+        this.published.add(generation.id);
+        if (pending) this.unsettled.add(generation.id);
+      }
+    }
     this.generations.delete(element);
   }
   private publishSettled() {
@@ -175,11 +187,11 @@ export class Capture {
       const conflict = generation && fields.some(field => card[field] !== null && generation!.values[field] !== null && card[field] !== generation!.values[field]);
       if (conflict && generation) {
         this.conflicts.add(generation.id);
-        this.closeGeneration(element);
+        this.closeGeneration(element, true);
         generation = undefined;
       }
       if (!generation) {
-        generation = { id: this.nextGeneration++, values: { ...card }, due: Date.now() + this.settleMs };
+        generation = { id: this.nextGeneration++, values: { ...card }, due: Date.now() + this.settleMs, afterConflict: Boolean(conflict) };
         this.generations.set(element, generation);
         if (conflict) this.conflicts.add(generation.id);
       }
@@ -212,10 +224,11 @@ export class Capture {
     const reconciled = reconcile(this.raw.filter(observation => this.published.has(observation.correlation)));
     for (const candidate of reconciled) {
       if (this.conflicts.has(candidate.id)) candidate.review.push('conflict');
+      if (this.unsettled.has(candidate.id)) candidate.review.push('unsettled');
       if (this.flagged.has(candidate.id)) candidate.review.push('user-review');
     }
     return {
-      rawObservations: structuredClone(this.raw), reconciled, confirmed: [],
+      rawObservations: structuredClone(this.raw), quarantinedCorrelations: [...this.quarantined], reconciled, confirmed: [],
       active: this.active, source: this.profile?.source ?? 'live-unverified',
       candidates: this.current.size, sightings: this.sightings, capped: this.capped, observations,
       coverage: Object.fromEntries(fields.map(field => [field, observations.filter(card => card[field] !== null).length])) as Record<Field, number>,
@@ -241,6 +254,7 @@ export function exportCandidatesJson(snapshot: Snapshot, selected: readonly Fiel
     sightings: snapshot.sightings, truncated: snapshot.capped,
     rawObservations: snapshot.rawObservations.map(observation => ({
       id: observation.id, correlation: observation.correlation, source: observation.source, view: observation.view, values: redact(observation.values),
+      quarantined: snapshot.quarantinedCorrelations.includes(observation.correlation),
     })),
     candidates: snapshot.reconciled.map(candidate => ({
       id: candidate.id, values: redact(candidate.values), location: candidate.location,

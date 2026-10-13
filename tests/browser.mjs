@@ -135,6 +135,39 @@ try {
   const cleared = await send('clear');
   assert.equal(cleared.active, false);
   assert.deepEqual(cleared.observations, []);
+  // Regression fixtures: stopping must preserve sampled evidence, and recycled
+  // name/stat transitions must stay raw evidence rather than extra candidates.
+  await target.locator('.entityContainer').evaluate(element => {
+    element.querySelector('.ut-item-view--main').style.display = '';
+    element.querySelector('.ut-item-view--bio').style.display = 'none';
+    element.querySelector(':scope > .name').textContent = 'Hazard';
+    element.querySelector('.rating').textContent = '89';
+    element.querySelector('.position').textContent = 'LM';
+  });
+  await send('start');
+  const stoppedPending = await send('stop');
+  assert.equal(stoppedPending.reconciled.length, 1);
+  assert.equal(stoppedPending.reconciled[0].values.name, 'Hazard');
+  assert(stoppedPending.reconciled[0].review.includes('unsettled'));
+  await target.waitForTimeout(300);
+  assert.deepEqual((await send('status')).reconciled, stoppedPending.reconciled);
+  await send('clear'); await send('start');
+  await target.waitForTimeout(300);
+  await target.locator('.entityContainer > .name').evaluate(element => { element.textContent = 'Kelly'; });
+  await target.waitForTimeout(30);
+  await target.locator('.playerOverview').evaluate(element => {
+    element.querySelector('.rating').textContent = '86';
+    element.querySelector('.position').textContent = 'CM';
+  });
+  await target.waitForTimeout(30);
+  const recycledStopped = await send('stop');
+  assert.deepEqual(recycledStopped.reconciled.map(candidate => [candidate.values.name, candidate.values.rating, candidate.values.position]), [
+    ['Hazard', '89', 'LM'], ['Kelly', '86', 'CM'],
+  ]);
+  assert.equal(recycledStopped.rawObservations.length, 3);
+  assert.deepEqual(recycledStopped.quarantinedCorrelations, [recycledStopped.rawObservations[1].correlation]);
+  await send('clear');
+
   await page.reload();
   await page.locator('#cards').evaluate(cards => {
     cards.innerHTML = '<article data-fixture-card><span data-field="name">Yıldız</span><span data-field="rating"></span><span data-field="position"></span></article>';

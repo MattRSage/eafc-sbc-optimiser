@@ -117,14 +117,52 @@ it('recognizes detach and reinsert in one mutation delivery', async () => {
   expect(capture.snapshot().reconciled).toHaveLength(2);
 });
 
-it('cancels pending publication on stop, resets correlation on restart, and clears all evidence', async () => {
-  capture.start(); await tick(100); capture.stop(); await tick(300);
-  expect(capture.snapshot().reconciled).toEqual([]);
-  capture.start(); await tick(250);
+it('finalises observed candidates on stop without another DOM read, then resets correlation on restart', async () => {
+  capture.start(); await tick(100);
+  const query = vi.spyOn(document.body, 'querySelectorAll');
+  set('name', 'Not sampled before stop');
+  capture.stop();
+  expect(query).not.toHaveBeenCalled();
   expect(capture.snapshot().reconciled).toHaveLength(1);
+  expect(capture.snapshot().reconciled[0]?.values.name).toBe('Yıldız');
+  expect(capture.snapshot().reconciled[0]?.review).toContain('unsettled');
+  const stopped = exportCandidatesJson(capture.snapshot(), fields);
+  expect(JSON.parse(stopped).candidates[0].values.name).toBe('Yıldız');
+  await tick(300);
+  expect(exportCandidatesJson(capture.snapshot(), fields)).toBe(stopped);
+  capture.start(); await tick(250);
+  expect(capture.snapshot().reconciled).toHaveLength(2);
   expect(capture.snapshot().rawObservations).toHaveLength(2);
   capture.clear(); await tick(300);
   expect(capture.snapshot()).toMatchObject({ reconciled: [], rawObservations: [], confirmed: [], sightings: 0 });
+});
+
+it.each(['settle', 'stop'])('quarantines superseded mixed-player samples when recycling finishes with %s', async finish => {
+  document.body.innerHTML = markup('Hazard', '89', 'LM');
+  capture.start(); await tick(250);
+  set('name', 'Kelly'); await tick(30);
+  set('rating', '86'); await tick(30);
+  set('position', 'CM'); await tick();
+  if (finish === 'stop') capture.stop();
+  else await tick(250);
+  const snapshot = capture.snapshot();
+  const exported = JSON.parse(exportCandidatesJson(snapshot, fields));
+  expect(exported.candidates.map((candidate: { values: unknown }) => candidate.values)).toMatchObject([
+    { name: 'Hazard', rating: '89', position: 'LM' },
+    { name: 'Kelly', rating: '86', position: 'CM' },
+  ]);
+  expect(exported.candidates).toHaveLength(2);
+  expect(snapshot.rawObservations.map(sample => sample.values)).toMatchObject([
+    { name: 'Hazard', rating: '89', position: 'LM' },
+    { name: 'Kelly', rating: '89', position: 'LM' },
+    { name: 'Kelly', rating: '86', position: 'LM' },
+    { name: 'Kelly', rating: '86', position: 'CM' },
+  ]);
+  expect(snapshot.reconciled[1]?.provenance.rating.observations).toEqual([4]);
+  expect(exported.rawObservations.map((sample: { quarantined: boolean }) => sample.quarantined)).toEqual([false, true, true, false]);
+  if (finish === 'stop') expect(snapshot.reconciled[1]?.review).toContain('unsettled');
+  capture.clear();
+  expect(capture.snapshot().quarantinedCorrelations).toEqual([]);
 });
 
 it('scans only the affected card on an in-card text update', async () => {
