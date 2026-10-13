@@ -10,7 +10,9 @@ export default defineContentScript({
     const listener = (message: unknown) => {
       if (!message || typeof message !== 'object' || !('command' in message)) return;
       const command = message.command;
-      if (!['status', 'start', 'stop', 'clear'].includes(String(command))) return;
+      if (typeof command !== 'string') return;
+      if (!['status', 'start', 'stop', 'clear'].includes(command) && !/^review:\d+$/.test(command)) return;
+      if (command.startsWith('review:')) capture.markForReview(Number(command.slice(7)));
       if (command === 'start') capture.start();
       if (command === 'stop') capture.stop();
       if (command === 'clear') capture.clear();

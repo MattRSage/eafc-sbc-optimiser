@@ -1,6 +1,5 @@
-export const fields = ['name', 'rating', 'position', 'club', 'league', 'nation', 'cardType', 'tradeable', 'sbcStorage', 'visibleId'] as const;
-export type Field = typeof fields[number];
-export type Card = Record<Field, string | null>;
+import { fields, reconcile, type Card, type Field, type RawObservation, type CardCandidate, type InventoryItem } from './reconciliation';
+export { fields, type Card, type Field } from './reconciliation';
 export interface Profile { source: 'synthetic' | 'live-sample'; candidate: string; fields: Partial<Record<Field, string>> }
 // These selectors describe our synthetic fixture only. No EA selectors are claimed.
 export const fixtureProfile: Profile = {
@@ -63,6 +62,10 @@ export interface Snapshot {
   capped: boolean;
   observations: Card[];
   coverage: Record<Field, number>;
+  rawObservations: RawObservation[];
+  quarantinedCorrelations: number[];
+  reconciled: CardCandidate[];
+  confirmed: InventoryItem[];
 }
 export class Capture {
   private active = false;
@@ -70,17 +73,42 @@ export class Capture {
   private timer?: ReturnType<typeof setTimeout>;
   private current = new Map<Element, string>();
   private observations = new Map<string, Card>();
+  private raw: RawObservation[] = [];
+  private generations = new Map<Element, { id: number; values: Card; due: number; afterConflict: boolean }>();
+  private published = new Set<number>();
+  private conflicts = new Set<number>();
+  private quarantined = new Set<number>();
+  private unsettled = new Set<number>();
+  private flagged = new Set<number>();
+  private nextGeneration = 1;
+  private settling?: ReturnType<typeof setTimeout>;
   private sightings = 0;
   private capped = false;
   private readonly schedule = () => {
     if (this.timer || !this.active) return;
-    this.timer = setTimeout(() => { this.timer = undefined; this.scan(); }, 100);
+    this.timer = setTimeout(() => { this.timer = undefined; this.scan(); }, 0);
   };
-  constructor(private root: HTMLElement, private profile: Profile | null) {}
+  constructor(private root: HTMLElement, private profile: Profile | null, private settleMs = 250) {}
   start() {
     if (this.active) return;
     this.active = true;
-    this.observer = new MutationObserver(this.schedule);
+    this.observer = new MutationObserver(records => {
+      // Detach/reinsert in one delivery still breaks continuity.
+      for (const record of records) for (const removed of record.removedNodes) {
+        for (const element of this.generations.keys()) if (removed === element || removed.contains(element)) this.closeGeneration(element);
+      }
+      const affected = new Set<Element>();
+      let broad = false;
+      for (const record of records) {
+        const container = [...this.current.keys()].find(element => element.contains(record.target));
+        if (container && record.target !== container) affected.add(container);
+        else broad = true;
+        if (record.type === 'attributes' && ['hidden', 'style', 'class', 'aria-hidden', 'inert'].includes(record.attributeName ?? '')) {
+          for (const element of this.generations.keys()) if (record.target === element || record.target.contains(element)) this.closeGeneration(element);
+        }
+      }
+      this.scan(broad ? undefined : affected);
+    });
     this.observer.observe(this.root, { subtree: true, childList: true, characterData: true, attributes: true });
     window.addEventListener('scroll', this.schedule, true);
     window.addEventListener('resize', this.schedule);
@@ -90,6 +118,9 @@ export class Capture {
   stop() {
     this.active = false;
     this.observer?.disconnect();
+    clearTimeout(this.settling);
+    this.settling = undefined;
+    for (const element of this.generations.keys()) this.closeGeneration(element);
     clearTimeout(this.timer);
     this.timer = undefined;
     window.removeEventListener('scroll', this.schedule, true);
@@ -99,33 +130,105 @@ export class Capture {
   clear() {
     this.stop();
     this.current.clear();
+    this.raw = [];
+    this.published.clear();
+    this.conflicts.clear();
+    this.quarantined.clear();
+    this.unsettled.clear();
+    this.flagged.clear();
+    this.nextGeneration = 1;
     this.observations.clear();
     this.sightings = 0;
     this.capped = false;
   }
-  private scan() {
+  private closeGeneration(element: Element, superseded = false) {
+    const generation = this.generations.get(element);
+    if (generation) {
+      const pending = !this.published.has(generation.id) && generation.due > Date.now();
+      if (superseded && generation.afterConflict && pending) this.quarantined.add(generation.id);
+      else {
+        this.published.add(generation.id);
+        if (pending) this.unsettled.add(generation.id);
+      }
+    }
+    this.generations.delete(element);
+  }
+  private publishSettled() {
+    clearTimeout(this.settling);
+    if (!this.active) return;
+    const now = Date.now();
+    let next = Infinity;
+    for (const generation of this.generations.values()) {
+      if (generation.due <= now) this.published.add(generation.id);
+      else next = Math.min(next, generation.due);
+    }
+    if (next !== Infinity) this.settling = setTimeout(() => this.publishSettled(), next - now);
+  }
+  private scan(affected?: Set<Element>) {
     if (!this.active || !this.profile) return;
-    const next = new Map<Element, string>();
-    for (const element of this.root.querySelectorAll(this.profile.candidate)) {
-      if (!visible(element)) continue;
+    const next = affected ? new Map(this.current) : new Map<Element, string>();
+    for (const element of affected ?? this.root.querySelectorAll(this.profile.candidate)) {
+      next.delete(element);
+      if (!element.matches(this.profile.candidate) || !visible(element)) continue;
       const card = parseCard(element, this.profile);
       const key = JSON.stringify(card);
       // Empty recycled placeholders are candidates, but provide no observation.
       if (fields.every(field => card[field] === null)) {
+        this.closeGeneration(element);
         next.set(element, '');
         continue;
       }
       if (this.current.get(element) !== key) this.sightings++;
+      let generation = this.generations.get(element);
+      if (generation && generation.values.name !== null && card.name === null) {
+        this.closeGeneration(element);
+        generation = undefined;
+      }
+      const conflict = generation && fields.some(field => card[field] !== null && generation!.values[field] !== null && card[field] !== generation!.values[field]);
+      if (conflict && generation) {
+        this.conflicts.add(generation.id);
+        this.closeGeneration(element, true);
+        generation = undefined;
+      }
+      if (!generation) {
+        generation = { id: this.nextGeneration++, values: { ...card }, due: Date.now() + this.settleMs, afterConflict: Boolean(conflict) };
+        this.generations.set(element, generation);
+        if (conflict) this.conflicts.add(generation.id);
+      }
+      if (this.current.get(element) !== key || !this.raw.some(observation => observation.correlation === generation!.id)) {
+        if (this.raw.length < 500) {
+          let view: RawObservation['view'] = 'partial';
+          if (this.profile.source === 'live-sample') {
+            if ([...element.querySelectorAll('.ut-item-view--main')].some(visible)) view = 'main';
+            else if ([...element.querySelectorAll('.ut-item-view--bio')].some(visible)) view = 'bio';
+          }
+          this.raw.push({ id: this.raw.length + 1, correlation: generation.id, source: this.profile.source, view, values: { ...card } });
+          for (const field of fields) if (card[field] !== null) generation.values[field] = card[field];
+          generation.due = Date.now() + this.settleMs;
+        } else this.capped = true;
+      }
       next.set(element, key);
       if (this.observations.has(key)) continue;
       if (this.observations.size >= 500) { this.capped = true; continue; }
       this.observations.set(key, card);
     }
+    for (const element of this.generations.keys()) if (!next.has(element)) this.closeGeneration(element);
     this.current = next;
+    this.publishSettled();
+  }
+  markForReview(id: number) {
+    if (this.published.has(id)) this.flagged.add(id);
   }
   snapshot(): Snapshot {
     const observations = [...this.observations.values()];
+    const reconciled = reconcile(this.raw.filter(observation => this.published.has(observation.correlation)));
+    for (const candidate of reconciled) {
+      if (this.conflicts.has(candidate.id)) candidate.review.push('conflict');
+      if (this.unsettled.has(candidate.id)) candidate.review.push('unsettled');
+      if (this.flagged.has(candidate.id)) candidate.review.push('user-review');
+    }
     return {
+      rawObservations: structuredClone(this.raw), quarantinedCorrelations: [...this.quarantined], reconciled, confirmed: [],
       active: this.active, source: this.profile?.source ?? 'live-unverified',
       candidates: this.current.size, sightings: this.sightings, capped: this.capped, observations,
       coverage: Object.fromEntries(fields.map(field => [field, observations.filter(card => card[field] !== null).length])) as Record<Field, number>,
@@ -141,5 +244,23 @@ export function exportJson(snapshot: Snapshot, selected: readonly Field[]): stri
     observations: snapshot.observations.map(card => Object.fromEntries(
       fields.map(field => [field, selected.includes(field) ? card[field] : null]),
     )),
+  }, null, 2);
+}
+
+export function exportCandidatesJson(snapshot: Snapshot, selected: readonly Field[]): string {
+  const redact = (card: Card) => Object.fromEntries(fields.map(field => [field, selected.includes(field) ? card[field] : null]));
+  return JSON.stringify({
+    format: 'sbc-inventory-candidates-v1', source: snapshot.source, ownership: 'unconfirmed',
+    sightings: snapshot.sightings, truncated: snapshot.capped,
+    rawObservations: snapshot.rawObservations.map(observation => ({
+      id: observation.id, correlation: observation.correlation, source: observation.source, view: observation.view, values: redact(observation.values),
+      quarantined: snapshot.quarantinedCorrelations.includes(observation.correlation),
+    })),
+    candidates: snapshot.reconciled.map(candidate => ({
+      id: candidate.id, values: redact(candidate.values), location: candidate.location,
+      confirmation: candidate.confirmation, review: candidate.review,
+      provenance: Object.fromEntries(fields.map(field => [field, selected.includes(field) ? candidate.provenance[field] : { observations: [], confidence: 'unknown' }])),
+    })),
+    confirmedItems: [],
   }, null, 2);
 }

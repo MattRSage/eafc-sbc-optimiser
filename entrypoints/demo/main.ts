@@ -8,6 +8,7 @@ mount(async command => {
   if (command === 'start') capture.start();
   if (command === 'stop') capture.stop();
   if (command === 'clear') capture.clear();
+  if (command.startsWith('review:')) capture.markForReview(Number(command.slice(7)));
   return capture.snapshot();
 });
 document.querySelector<HTMLButtonElement>('#add')!.onclick = () => cards.append(cards.firstElementChild!.cloneNode(true));
