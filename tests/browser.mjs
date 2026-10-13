@@ -67,11 +67,26 @@ try {
   await page.screenshot({ path: 'test-results/demo.png', fullPage: false });
   await page.reload();
   assert.match(await counts(), /0 distinct descriptions · 0 sightings/);
+  await click('Enable capture');
+  await click('Recycle first card'); await refresh();
+  assert.match(await counts(), /2 visible candidates.*2 distinct descriptions · 3 sightings/);
+  await click('Review JSON export');
+  assert.equal(JSON.parse(await page.locator('#preview').textContent()).observations[0].tradeable, 'Untradeable');
+  await click('Hide or show first card'); await refresh();
+  assert.match(await counts(), /1 visible candidates.*2 distinct descriptions · 3 sightings/);
+  await click('Hide or show first card'); await refresh();
+  assert.match(await counts(), /2 visible candidates.*2 distinct descriptions · 4 sightings/);
+  await click('Disable capture');
+  await click('Recycle first card'); await refresh();
+  assert.match(await counts(), /4 sightings/);
+  await click('Enable capture');
+  assert.match(await counts(), /2 distinct descriptions · 5 sightings/);
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${id}/popup.html`);
   await popup.waitForFunction(() => document.querySelector('#status').textContent.includes('No supported tab'));
-  // A routed blank synthetic page exercises the content-script bridge without contacting EA.
-  await context.route('https://www.ea.com/ea-sports-fc/ultimate-team/web-app/', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Synthetic bridge test</title><body>No account or live markup</body>' }));
+  // Only sanitised local fixtures are served here; no requests reach EA.
+  const playerFixture = await readFile('tests/fixtures/player-list-main.html', 'utf8');
+  await context.route('https://www.ea.com/ea-sports-fc/ultimate-team/web-app/', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html><title>Sanitised player-list test</title><body>${playerFixture}</body>` }));
   const target = await context.newPage();
   await target.goto('https://www.ea.com/ea-sports-fc/ultimate-team/web-app/');
   const send = command => popup.evaluate(async command => {
@@ -83,12 +98,38 @@ try {
     throw new Error('Content script did not respond');
   }, command);
   assert.equal((await send('status')).active, false);
-  assert.equal((await send('start')).active, true);
   assert.deepEqual((await send('status')).observations, []);
+  const initial = await send('start');
+  assert.equal(initial.active, true);
+  assert.equal(initial.source, 'live-sample');
+  assert.equal(initial.observations.length, 1);
+  assert.equal(initial.observations[0].name, 'Alex Example');
+  assert.equal(initial.observations[0].rating, '84');
+  assert.equal(initial.observations[0].nation, null);
+  // Manual view changes are simulated only on the routed local fixture.
+  await target.locator('.ut-item-view--main').evaluate(element => { element.style.display = 'none'; });
+  await target.locator('.ut-item-view--bio').evaluate(element => { element.style.display = ''; });
+  await target.waitForTimeout(200);
+  const switched = await send('status');
+  assert.equal(switched.observations.length, 2);
+  assert.equal(switched.observations[1].rating, null);
+  assert.equal(switched.observations[1].position, 'CM');
+  assert.equal(switched.observations[1].nation, 'NNN');
+  assert.equal(switched.observations[1].league, 'DEM 1');
+  assert.equal(switched.observations[1].club, 'DEM');
+  assert.equal(switched.observations[1].tradeable, null);
+  assert.equal(switched.observations[1].visibleId, null);
   assert.equal((await send('stop')).active, false);
+  await target.locator('.entityContainer > .name').evaluate(element => { element.textContent = 'Sam Sample'; });
+  await target.waitForTimeout(200);
+  assert.equal((await send('status')).observations.length, 2);
+  assert.equal((await send('start')).observations.length, 3);
+  const cleared = await send('clear');
+  assert.equal(cleared.active, false);
+  assert.deepEqual(cleared.observations, []);
   assert.deepEqual(errors, []);
   assert.deepEqual(requests, []);
-  console.log('PASS: built MV3 extension, opt-in/stop/restart, deduplication, rendered visibility, redaction/download, reload reset, popup fallback, content-script messaging, zero external requests.');
+  console.log('PASS: built MV3 extension, opt-in/stop/restart, deduplication, rendered visibility, redaction/download, reload reset, popup fallback, content-script main/bio extraction, hidden-field exclusion, zero external requests.');
 } finally {
   await context.close();
   await rm(profile, { recursive: true, force: true });
