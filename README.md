@@ -2,11 +2,11 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** Opt-in player-list extraction supports one user-supplied card layout in main and bio views. It records partial visible-text observations and reconciles continuously visible cards into provisional candidates. Owned-card identity and broader layout coverage remain unverified. No owned-card importer or solver yet.
+> **Status:** Opt-in player-list extraction supports one user-supplied card layout in main and bio views. It records partial visible-text observations and reconciles continuously visible cards into provisional candidates. Owned-card identity and broader layout coverage remain unverified. A synthetic club import engine is available for adapter development; no live owned-card importer or solver yet.
 
 ## Goal
 
-Build a full-club inventory through an explicitly started, read-only import using the official EA FC Web App's internal services, then plan SBC solutions that minimise sacrificed player value and coins spent. This import is planned; the current extension still captures partial visible-DOM observations.
+Build a full-club inventory through an explicitly started, read-only import using the official EA FC Web App's internal services, then plan SBC solutions that minimise sacrificed player value and coins spent. The synthetic import engine validates pagination and failure handling without contacting EA. The current extension still captures partial visible-DOM observations. See the [inventory import contract](docs/inventory-import.md) for the adapter handoff and completion rules.
 
 The owner approved this direction on 2026-11-17 with unresolved EA terms and account-enforcement risk. See the [import policy](docs/import-policy.md) for the scope and retained restrictions.
 
