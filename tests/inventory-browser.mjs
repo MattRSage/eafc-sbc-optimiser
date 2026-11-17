@@ -88,7 +88,7 @@ export async function testInventory({ context, target, send, id }) {
   assert.equal(partial.items.length, 2);
   await target.evaluate(() => { window.inventoryFixture.mode = 'malformed'; });
   await send('import:start');
-  assert.equal((await waitDone()).problem, 'malformed');
+  assert.equal((await waitDone()).problem, 'malformed-end-marker');
   await target.evaluate(() => { window.inventoryFixture.mode = 'auth'; });
   await send('import:start');
   assert.equal((await waitDone()).problem, 'authentication');

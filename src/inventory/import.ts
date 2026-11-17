@@ -1,7 +1,9 @@
 export type InventorySource = 'club' | 'sbc-storage';
 export type Coverage = 'not-started' | 'partial' | 'complete' | 'not-implemented';
 export type ImportStatus = 'idle' | 'running' | 'cancelled' | 'partial' | 'complete' | 'failed';
-export type ImportProblem = 'authentication' | 'rate-limit' | 'service' | 'malformed' | 'repeated-page' | 'request-limit' | 'timeout' | 'conflicting-instance' | 'unsupported-service';
+export const malformedProblems = ['malformed-envelope', 'malformed-response', 'malformed-items', 'malformed-page-size', 'malformed-end-marker', 'malformed-empty-page', 'malformed-item', 'malformed-concept', 'malformed-rating', 'malformed-instance-id', 'malformed-definition-id', 'malformed-observable'] as const;
+export type MalformedProblem = typeof malformedProblems[number];
+export type ImportProblem = MalformedProblem | 'authentication' | 'rate-limit' | 'service' | 'malformed' | 'repeated-page' | 'request-limit' | 'timeout' | 'conflicting-instance' | 'unsupported-service';
 
 export interface OwnedInstance {
   instanceId: string;
@@ -30,7 +32,7 @@ export interface InventoryService {
 }
 
 export class InventoryServiceError extends Error {
-  constructor(readonly code: 'authentication' | 'rate-limit' | 'service' | 'malformed' | 'unsupported-service' | 'conflicting-instance') {
+  constructor(readonly code: MalformedProblem | 'authentication' | 'rate-limit' | 'service' | 'malformed' | 'unsupported-service' | 'conflicting-instance') {
     super(code);
   }
 }

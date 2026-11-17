@@ -93,3 +93,26 @@ it('does not start storage or report completion when cancelled between sources',
   expect(result.status).toBe('cancelled');
   expect(result.coverage['sbc-storage']).toBe('not-started');
 });
+
+it.each([
+  [null, 'malformed-envelope'],
+  [{ success: true }, 'malformed-response'],
+  [{ success: true, response: { items: {} } }, 'malformed-items'],
+  [response(Array.from({ length: 101 }, () => card())), 'malformed-page-size'],
+  [{ success: true, response: { items: [] } }, 'malformed-end-marker'],
+  [response([], false), 'malformed-empty-page'],
+  [response([null]), 'malformed-item'],
+  [response([{ ...card(), concept: true }]), 'malformed-concept'],
+  [response([{ ...card(), rating: 'private-value' }]), 'malformed-rating'],
+  [response([{ ...card(), id: 'private value' }]), 'malformed-instance-id'],
+  [response([{ ...card(), definitionId: null }]), 'malformed-definition-id'],
+])('reports only a fixed validation code through the engine and bridge', async (raw, code) => {
+  const result = await importInventory({ evidence: 'synthetic-service', readClubPage: async () => normalizeResponse(raw, 'club', 0) });
+  expect(result).toMatchObject({ status: 'failed', items: [], pages: 0, requests: 1, problem: code });
+  expect(parseSnapshot(result)?.problem).toBe(code);
+  expect(JSON.stringify(result)).not.toContain('private');
+});
+
+it('rejects arbitrary diagnostic strings at the bridge', () => {
+  expect(parseSnapshot({ status: 'failed', items: [], coverage: { club: 'partial', 'sbc-storage': 'not-started' }, pages: 0, requests: 1, problem: 'malformed-private-value' })).toBeNull();
+});

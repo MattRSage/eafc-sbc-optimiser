@@ -2,27 +2,31 @@ import { InventoryServiceError, type InventorySource } from './import';
 
 export const PAGE_SIZE = 100;
 export const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-const identifier = (value: unknown): string => {
+const identifier = (value: unknown, field: 'instance-id' | 'definition-id'): string => {
   if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return String(value);
   if (typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value) && value !== '0') return value;
-  throw new InventoryServiceError('malformed');
+  throw new InventoryServiceError(`malformed-${field}`);
 };
 
 export function normalizeResponse(value: unknown, source: InventorySource, offset: number) {
-  if (!isRecord(value) || typeof value.success !== 'boolean') throw new InventoryServiceError('malformed');
+  if (!isRecord(value) || typeof value.success !== 'boolean') throw new InventoryServiceError('malformed-envelope');
   if (!value.success) {
     throw new InventoryServiceError(value.status === 401 || value.status === 403 ? 'authentication' : value.status === 429 ? 'rate-limit' : 'service');
   }
   const response = value.response;
   const endKey = source === 'club' ? 'retrievedAll' : 'endOfList';
-  if (!isRecord(response) || !Array.isArray(response.items) || response.items.length > PAGE_SIZE || typeof response[endKey] !== 'boolean') throw new InventoryServiceError('malformed');
-  if (!response[endKey] && response.items.length === 0) throw new InventoryServiceError('malformed');
+  if (!isRecord(response)) throw new InventoryServiceError('malformed-response');
+  if (!Array.isArray(response.items)) throw new InventoryServiceError('malformed-items');
+  if (response.items.length > PAGE_SIZE) throw new InventoryServiceError('malformed-page-size');
+  if (typeof response[endKey] !== 'boolean') throw new InventoryServiceError('malformed-end-marker');
+  if (!response[endKey] && response.items.length === 0) throw new InventoryServiceError('malformed-empty-page');
   const items = response.items.map((item: unknown) => {
-    if (!isRecord(item) || item.concept === true) throw new InventoryServiceError('malformed');
+    if (!isRecord(item)) throw new InventoryServiceError('malformed-item');
+    if (item.concept === true) throw new InventoryServiceError('malformed-concept');
     const rating = item.rating;
-    if (rating != null && (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 0 || rating > 99)) throw new InventoryServiceError('malformed');
+    if (rating != null && (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 0 || rating > 99)) throw new InventoryServiceError('malformed-rating');
     // Entity defaults cannot establish whether these optional values were supplied.
-    return { instanceId: identifier(item.id), definitionId: identifier(item.definitionId), name: null, position: null, rating: rating === 0 ? null : rating ?? null, tradeable: null };
+    return { instanceId: identifier(item.id, 'instance-id'), definitionId: identifier(item.definitionId, 'definition-id'), name: null, position: null, rating: rating === 0 ? null : rating ?? null, tradeable: null };
   });
   return { items, nextCursor: response[endKey] ? null : String(offset + PAGE_SIZE) };
 }
@@ -59,7 +63,7 @@ export function readWebAppPage(root: unknown, source: InventorySource, cursor: s
       criteria.offset = offset;
       criteria.count = PAGE_SIZE;
       const result: unknown = service[method].call(service, criteria);
-      if (!isRecord(result) || typeof result.observe !== 'function' || typeof result.unobserve !== 'function') throw new InventoryServiceError('malformed');
+      if (!isRecord(result) || typeof result.observe !== 'function' || typeof result.unobserve !== 'function') throw new InventoryServiceError('malformed-observable');
       observable = result as unknown as Observable;
       signal.addEventListener('abort', abort, { once: true });
       if (signal.aborted) { abort(); return; }

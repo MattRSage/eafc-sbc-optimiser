@@ -56,3 +56,7 @@ Synthetic Vitest and Chromium fixtures verify the implemented contract. They cov
 Actual live import evidence: **none collected**. Identity stability, service defaults, effective page sizes, final-marker semantics, cache freshness, and complete real-club coverage remain unverified. Concurrent club changes can make pagination inconsistent. The adapter fails closed if the live service shape differs from this contract.
 
 The persistence session must retain source coverage and verification status alongside records. It must not infer ownership validation from `status: complete`, merge DOM sightings into these records, or delete previous records because they are missing from a new run. The [manual validation procedure](validate-live-import.md) lists the remaining checks.
+
+## Live validation diagnostics
+
+The first user-run live import stopped with `malformed` after one request and zero accepted pages. This establishes a validation failure, not an empty club or a known root cause. The adapter now reports fixed `malformed-*` codes identifying envelope, response, items, page-size, end-marker, empty-page, item, concept, rating, instance-id, definition-id, or observable validation failures. These codes contain no response values or identifiers. Existing validation remains strict; a new deliberate live import is needed to identify the failing check.
