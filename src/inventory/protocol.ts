@@ -1,5 +1,5 @@
 import { isRecord } from './web-app';
-import { parsePage, type ImportSnapshot } from './import';
+import { malformedProblems, parsePage, type ImportSnapshot } from './import';
 export const CHANNEL = 'sbc-inventory-v1';
 export const validRun = (id: unknown): id is string => typeof id === 'string' && /^[0-9a-f-]{36}$/.test(id);
 
@@ -7,7 +7,7 @@ export function parseSnapshot(value: unknown): ImportSnapshot | null {
   if (!isRecord(value) || !['idle', 'running', 'cancelled', 'partial', 'complete', 'failed'].includes(String(value.status)) || !isRecord(value.coverage)) return null;
   if (![value.requests, value.pages].every(n => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 && n <= 200)) return null;
   if (![value.coverage.club, value.coverage['sbc-storage']].every(v => ['not-started', 'partial', 'complete', 'not-implemented'].includes(String(v)))) return null;
-  if (value.problem !== null && !['authentication', 'rate-limit', 'service', 'malformed', 'repeated-page', 'request-limit', 'timeout', 'conflicting-instance', 'unsupported-service'].includes(String(value.problem))) return null;
+  if (value.problem !== null && ![...malformedProblems, 'authentication', 'rate-limit', 'service', 'malformed', 'repeated-page', 'request-limit', 'timeout', 'conflicting-instance', 'unsupported-service'].includes(String(value.problem))) return null;
   if (!Array.isArray(value.items) || value.items.length > 20_000) return null;
   try {
     const items = value.items.map(item => {
