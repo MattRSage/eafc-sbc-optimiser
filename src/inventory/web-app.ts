@@ -1,6 +1,7 @@
 import { InventoryServiceError, type InventorySource } from './import';
 
 export const PAGE_SIZE = 100;
+const MAX_STORAGE_ITEMS = 10_000;
 export const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const identifier = (value: unknown, field: 'instance-id' | 'definition-id'): string => {
   if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return String(value);
@@ -17,8 +18,9 @@ export function normalizeResponse(value: unknown, source: InventorySource, offse
   const endKey = source === 'club' ? 'retrievedAll' : 'endOfList';
   if (!isRecord(response)) throw new InventoryServiceError('malformed-response');
   if (!Array.isArray(response.items)) throw new InventoryServiceError('malformed-items');
-  if (response.items.length > PAGE_SIZE) throw new InventoryServiceError('malformed-page-size');
+  if (response.items.length > (source === 'club' ? PAGE_SIZE : MAX_STORAGE_ITEMS)) throw new InventoryServiceError('malformed-page-size');
   if (typeof response[endKey] !== 'boolean') throw new InventoryServiceError('malformed-end-marker');
+  if (source === 'sbc-storage' && response[endKey] !== true) throw new InventoryServiceError('malformed-end-marker');
   if (!response[endKey] && response.items.length === 0) throw new InventoryServiceError('malformed-empty-page');
   const items = response.items.map((item: unknown) => {
     if (!isRecord(item)) throw new InventoryServiceError('malformed-item');
@@ -61,7 +63,8 @@ export function readWebAppPage(root: unknown, source: InventorySource, cursor: s
       const criteria = new Criteria();
       criteria.type = root.SearchType.PLAYER;
       criteria.offset = offset;
-      criteria.count = PAGE_SIZE;
+      criteria.count = source === 'club' ? PAGE_SIZE : MAX_STORAGE_ITEMS;
+      if (source === 'club') Object.defineProperty(criteria, 'cacheable', { value: false });
       const result: unknown = service[method].call(service, criteria);
       if (!isRecord(result) || typeof result.observe !== 'function' || typeof result.unobserve !== 'function') throw new InventoryServiceError('malformed-observable');
       observable = result as unknown as Observable;

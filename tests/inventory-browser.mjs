@@ -51,7 +51,7 @@ export async function testInventory({ context, target, send, id }) {
   assert.deepEqual(await target.evaluate(() => window.inventoryFixture.calls), [
     { source: 'club', offset: 0, count: 100, type: 'player' },
     { source: 'club', offset: 100, count: 100, type: 'player' },
-    { source: 'sbc-storage', offset: 0, count: 100, type: 'player' },
+    { source: 'sbc-storage', offset: 0, count: 10000, type: 'player' },
   ]);
   await testLibrary(controls, target);
   const waitDone = async () => {

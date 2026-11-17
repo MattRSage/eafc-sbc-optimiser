@@ -116,3 +116,39 @@ it.each([
 it('rejects arbitrary diagnostic strings at the bridge', () => {
   expect(parseSnapshot({ status: 'failed', items: [], coverage: { club: 'partial', 'sbc-storage': 'not-started' }, pages: 0, requests: 1, problem: 'malformed-private-value' })).toBeNull();
 });
+
+
+it('imports fresh club batches despite a growing or prepopulated service cache', async () => {
+  const cards = Array.from({ length: 205 }, (_, i) => card(`synthetic-copy-${i}`));
+  let cache = [card('synthetic-stale-copy')];
+  const offsets: number[] = [];
+  class Criteria { get cacheable() { return true; } }
+  const root = {
+    UTSearchCriteriaDTO: Criteria, SearchType: { PLAYER: 'player' },
+    services: { Club: { search(criteria: { offset: number; count: number; cacheable: boolean }) {
+      expect(criteria.cacheable).toBe(false);
+      offsets.push(criteria.offset);
+      const batch = cards.slice(criteria.offset, criteria.offset + criteria.count);
+      cache = [...cache, ...batch];
+      return { unobserve() {}, observe(owner: object, cb: (sender: object, value: unknown) => void) {
+        cb(owner, response(criteria.cacheable ? cache : batch, batch.length < criteria.count));
+      } };
+    } } },
+  };
+  for (let run = 0; run < 2; run++) {
+    const result = await importInventory({ evidence: 'synthetic-service',
+      readClubPage: ({ cursor, signal }) => readWebAppPage(root, 'club', cursor, signal),
+      readStoragePage: async () => ({ items: [], nextCursor: null }),
+    });
+    expect(result.status).toBe('complete');
+    expect(result.items.map(item => item.instanceId)).toEqual(cards.map(item => item.id));
+  }
+  expect(offsets).toEqual([0, 100, 200, 0, 100, 200]);
+});
+
+it('accepts complete storage collections beyond the club page size but keeps bounds', () => {
+  const cards = Array.from({ length: 200 }, (_, i) => card(`storage-copy-${i}`));
+  expect(normalizeResponse(response(cards), 'sbc-storage', 0).items).toHaveLength(200);
+  expect(() => normalizeResponse(response(cards, false), 'sbc-storage', 0)).toThrow('malformed-end-marker');
+  expect(() => normalizeResponse(response(Array(10_001).fill(card())), 'sbc-storage', 0)).toThrow('malformed-page-size');
+});

@@ -4,7 +4,7 @@ Issue #9 adds an in-memory import through the signed-in Web App's inventory serv
 
 ## Supported service contract
 
-The adapter constructs `UTSearchCriteriaDTO` with `type = SearchType.PLAYER`, `offset`, and `count = 100`. Each source starts at offset zero. A nonfinal response advances the offset by 100.
+The adapter constructs `UTSearchCriteriaDTO` with `type = SearchType.PLAYER`, `offset`, and `count = 100`. Club requests start at offset zero and advance by 100. Each club criteria object overrides the inherited `cacheable` getter with `false`, so the service returns the fetched batch rather than a search of its growing cache. SBC storage uses a separate bounded whole-collection request with count 10,000 and requires `endOfList === true`.
 
 | Source | Read operation | Successful observable response | Explicit final marker |
 | --- | --- | --- | --- |
@@ -59,4 +59,4 @@ The persistence session must retain source coverage and verification status alon
 
 ## Live validation diagnostics
 
-The first user-run live import stopped with `malformed` after one request and zero accepted pages. This establishes a validation failure, not an empty club or a known root cause. The adapter now reports fixed `malformed-*` codes identifying envelope, response, items, page-size, end-marker, empty-page, item, concept, rating, instance-id, definition-id, or observable validation failures. These codes contain no response values or identifiers. Existing validation remains strict; a new deliberate live import is needed to identify the failing check.
+A user-run live import stopped with `malformed`; a subsequent diagnostic run accepted 100 items, then stopped on a 200-item response with `malformed-page-size` and `retrievedAll === false`. This establishes a validation failure, not an empty club or a known root cause. The adapter now reports fixed `malformed-*` codes identifying envelope, response, items, page-size, end-marker, empty-page, item, concept, rating, instance-id, definition-id, or observable validation failures. These codes contain no response values or identifiers. Public `ocompiled.js?_=11414` inspection establishes that `getClubItems` selects either a repository search or the newly fetched batch based on `criteria.cacheable`. The default criteria getter enables caching. The adapter now disables this per club request without modifying shared prototypes or repositories. The same public code shows storage returning a collection with `endOfList: true`; it has a separate 10,000-item safety bound. Synthetic tests reproduce growing and prepopulated caches and repeat imports. Live validation of the fix remains outstanding.
