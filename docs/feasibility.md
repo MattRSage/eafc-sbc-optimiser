@@ -1,5 +1,7 @@
 # DOM feasibility report
 
+> This report describes the existing DOM spike. On 2026-11-17, the owner approved a separate read-only internal-service import direction; see [the import policy](import-policy.md). Its exception supersedes the DOM-only restriction for future importer work. The implementation and evidence below remain unchanged.
+
 ## Decision
 
 A narrow, opt-in player-list profile is now supported by two user-supplied DOM samples: one card in main view and the same card after a manual switch to bio view. The user confirmed that the first sample came from the player list and that its name, rating, and position were visible. The second sample shows the bio panel displayed and the main panel hidden.
@@ -75,7 +77,7 @@ Follow the [Chrome DevTools guide and evidence template](manual-inspection.md) f
 
 If live use is acceptable for your account, load the production extension, keep capture off initially, and open the player list yourself. Select **Enable observer**, then **Refresh diagnostics**. Manually switch main and bio views and refresh again. Expect partial descriptions rather than imported cards; rating should be unknown in the bio description. Select **Disable observer** and verify that further manual navigation does not change counts. Review and redact any deliberate export.
 
-If a layout does not match, stop and collect a sanitised example. Do not substitute hidden fields, asset IDs, authenticated APIs, or application stores. Issue #3 remains open for broader live validation and ownership feasibility.
+If a layout does not match, stop and collect a sanitised example. Do not substitute hidden fields, asset IDs, authenticated APIs, or application stores. Issue #3 is closed. Broader live validation and ownership feasibility remain unverified by this report.
 
 ## Validation
 
