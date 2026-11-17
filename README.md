@@ -6,13 +6,15 @@ A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team cl
 
 ## Goal
 
-Build an inventory from player cards you encounter while **manually browsing** the official EA FC Web App, then use that inventory to plan SBC solutions that minimise sacrificed player value and coins spent.
+Build a full-club inventory through an explicitly started, read-only import using the official EA FC Web App's internal services, then plan SBC solutions that minimise sacrificed player value and coins spent. This import is planned; the current extension still captures partial visible-DOM observations.
+
+The owner approved this direction on 2026-11-17 with unresolved EA terms and account-enforcement risk. See the [import policy](docs/import-policy.md) for the scope and retained restrictions.
 
 ### Product principles
 
 - **User-controlled:** The user navigates the EA Web App themselves. No automated scrolling, clicking, SBC submission or transfers.
 - **Opt-in observation:** The extension remains inactive until explicitly enabled and can be paused or disabled.
-- **Visible information only:** Investigate whether rendered, user-visible player-card DOM elements expose enough information. Do not read hidden app state, inspect private API responses, or retrieve tokens/cookies.
+- **Read-only inventory import:** Permit internal inventory services only after a deliberate start action. Do not collect authentication material, intercept network traffic, or access unrelated application state. Existing DOM capture remains limited to visible information.
 - **Local-first:** Keep club data in browser storage; offer deliberate JSON/CSV export. No backend or telemetry required for the MVP.
 - **Conservative inventory reconciliation:** Duplicates, untradeable status, SBC storage and disappearing cards require careful treatment. A card not seen during a session is **not** automatically deleted.
 - **Protection controls:** Let users mark players as protected so solvers never recommend submitting them.
@@ -30,17 +32,17 @@ Build an inventory from player cards you encounter while **manually browsing** t
 | Persistence after proof of concept | IndexedDB, potentially via Dexie |
 | SBC optimisation after inventory | Evaluate GLPK.js or another suitable constraint solver |
 
-The stack is deliberately provisional: test the DOM feasibility before building the full product.
+The stack is deliberately provisional: validate the read-only import with synthetic service fixtures before building the full product.
 
 ## Roadmap
 
 1. **DOM feasibility proof of concept:** Identify player-card markup; build an opt-in, read-only diagnostic extension; manually browse and test extraction; export a redacted JSON sample.
-2. **Club inventory:** Persist extracted observations locally; deduplicate appropriately; filter, protect and edit owned items; support main club and SBC storage.
+2. **Club inventory:** Build the user-initiated internal-service importer, with cancellation and explicit partial-import status. Validate instance identity and source coverage before treating records as owned inventory. Persist locally and support filtering, protection, and manual corrections.
 3. **SBC requirement capture:** Support manual input first and potentially read visible SBC requirements where practical.
 4. **Optimisation:** Solve rating, item score and other constraints; preserve protected players; minimise purchases and opportunity cost.
 5. **Inventory exchange:** Export structured, privacy-reviewed data for analysis in ChatGPT; no direct account integration necessary.
 
-## Definition of done: Phase 1
+## Definition of done: Phase 1 (DOM spike)
 
 - A locally loadable Chrome extension with explicit start/stop capture.
 - Read-only access to the DOM of the official Web App; no automation or intercepted network calls.
@@ -81,7 +83,7 @@ The popup controls the active supported EA tab. The demo has its own controls an
 
 Select **Refresh diagnostics** after rendering settles to see separate sighting, raw observation, candidate, and confirmed-item counts. Select **Mark for review** beside a candidate to flag it for this capture session. **Review candidate JSON export** includes redacted raw evidence, candidate fields, and provenance in `sbc-inventory-candidates-v1`. **Review JSON export** retains the original `sbc-dom-observations-v1` format. See [candidate reconciliation](docs/reconciliation.md) for continuity rules, limits, and confirmation semantics.
 
-GitHub Actions runs typecheck, Vitest, and the production build on pull requests and pushes to `main`. A separate job runs the synthetic Chromium smoke test. Live DOM and account-policy verification remain tracked in [issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3).
+GitHub Actions runs typecheck, Vitest, and the production build on pull requests and pushes to `main`. A separate job runs the synthetic Chromium smoke test. The earlier DOM investigation is recorded in closed [issue #3](https://github.com/MattRSage/eafc-sbc-optimiser/issues/3). The [import policy](docs/import-policy.md) records the subsequent change in direction.
 
 For the automated browser demonstration:
 
