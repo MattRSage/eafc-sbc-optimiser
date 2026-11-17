@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { testLibrary } from './library-browser.mjs';
 
 export async function testInventory({ context, target, send, id }) {
   await target.evaluate(() => {
@@ -13,9 +14,9 @@ export async function testInventory({ context, target, send, id }) {
         observe(owner, callback) {
           setTimeout(() => {
             const item = { id: source === 'club' ? `invented-copy-${criteria.offset}` : 'invented-storage-copy', definitionId: 'invented-definition', rating: 84, unrelated: 'discard-me' };
-            const response = { items: [item] };
-            if (mode !== 'malformed') response[source === 'club' ? 'retrievedAll' : 'endOfList'] = source === 'sbc-storage' || criteria.offset === 100;
-            callback(this, mode === 'auth' ? { success: false, status: 401 } : { success: true, response });
+            const response = { items: mode === 'missing' && source === 'club' ? [] : [item] };
+            if (mode !== 'malformed') response[source === 'club' ? 'retrievedAll' : 'endOfList'] = mode === 'missing' || source === 'sbc-storage' || criteria.offset === 100;
+            callback(this, mode === 'auth' || (mode === 'storage-failure' && source === 'sbc-storage') ? { success: false, status: 401 } : { success: true, response });
           }, fixture.delay);
         },
         unobserve() { fixture.detached++; },
@@ -52,6 +53,7 @@ export async function testInventory({ context, target, send, id }) {
     { source: 'club', offset: 100, count: 100, type: 'player' },
     { source: 'sbc-storage', offset: 0, count: 100, type: 'player' },
   ]);
+  await testLibrary(controls, target);
   const waitDone = async () => {
     let state;
     for (let i = 0; i < 100; i++) {

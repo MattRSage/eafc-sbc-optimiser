@@ -1,4 +1,5 @@
 import type { ImportSnapshot } from './import';
+import { mountLibrary } from './library-ui';
 
 export function mountInventory(root: HTMLElement, send: (command: string) => Promise<ImportSnapshot>) {
   root.innerHTML = `<h2>Club inventory import</h2>
@@ -13,6 +14,9 @@ export function mountInventory(root: HTMLElement, send: (command: string) => Pro
   const result = root.querySelector<HTMLElement>('#import-result')!;
   let latest: ImportSnapshot | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const libraryRoot = document.createElement('div');
+  root.append(libraryRoot);
+  const library = mountLibrary(libraryRoot, () => latest);
   const render = (state: ImportSnapshot) => {
     latest = state;
     start.disabled = state.status === 'running';
@@ -27,7 +31,7 @@ export function mountInventory(root: HTMLElement, send: (command: string) => Pro
     try { render(await send(name)); }
     catch { status.textContent = 'No supported Web App tab. Open the Web App and sign in yourself, then reopen this popup.'; start.disabled = true; cancel.disabled = true; }
   };
-  start.onclick = () => { start.disabled = true; result.hidden = true; void command('import:start'); };
+  start.onclick = () => { library.resetConfirmation(); latest = undefined; review.disabled = true; start.disabled = true; result.hidden = true; void command('import:start'); };
   cancel.onclick = () => { cancel.disabled = true; void command('import:cancel'); };
   review.onclick = () => {
     result.textContent = JSON.stringify({ verification: 'Live ownership, identity and coverage unverified. Missing records do not imply sale or submission.', ...latest }, null, 2);
