@@ -57,7 +57,7 @@ export function mountLibrary(root: HTMLElement, getImport: () => ImportSnapshot 
       if (el<HTMLInputElement>('stale-only').checked && item.freshness === 'seen') continue;
       const row = document.createElement('section'); row.className = 'saved-item';
       const text = document.createElement('p');
-      text.textContent = `${card.name ?? 'Unknown name'} · ${card.rating ?? 'Unknown rating'} · ${card.position ?? 'Unknown position'} · tradeable: ${card.tradeable ?? 'unknown'} · ${card.provenance.source} · ${card.instanceId} · ${item.freshness} · last seen ${item.lastSeen}`;
+      text.textContent = `${card.name ?? 'Unknown name'} · ${card.rating ?? 'Unknown rating'} · ${card.position ?? 'Unknown position'} · tradeable: ${card.tradeable ?? 'unknown'} · nation ID: ${card.nationId ?? 'unknown'} · league ID: ${card.leagueId ?? 'unknown'} · club ID: ${card.clubId ?? 'unknown'} · rarity ID: ${card.rarityId ?? 'unknown'} · ${card.provenance.source} · ${card.instanceId} · ${item.freshness} · last seen ${item.lastSeen}`;
       const protect = document.createElement('button'); protect.textContent = item.protected ? 'Unprotect player' : 'Protect player';
       protect.onclick = () => void run(() => updateProfile(current => ({ ...current, items: current.items.map(i => i.reported.instanceId === card.instanceId ? { ...i, protected: !i.protected } : i) })));
       const details = document.createElement('details');

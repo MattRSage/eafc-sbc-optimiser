@@ -12,6 +12,10 @@ export interface OwnedInstance {
   rating: number | null;
   position: string | null;
   tradeable: boolean | null;
+  nationId?: number | null;
+  leagueId?: number | null;
+  clubId?: number | null;
+  rarityId?: number | null;
   provenance: { kind: 'synthetic-service' | 'internal-inventory-service'; source: InventorySource };
 }
 
@@ -44,6 +48,11 @@ export function idleImport(): ImportSnapshot {
 type Page = { items: Omit<OwnedInstance, 'provenance'>[]; nextCursor: string | null };
 const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const id = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
+function optionalId(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) throw new Error('malformed');
+  return value;
+}
 export function parsePage(value: unknown): Page {
   if (!record(value) || !Array.isArray(value.items) || !(value.nextCursor === null || id(value.nextCursor))) throw new Error('malformed');
   const items = value.items.map((item): Page['items'][number] => {
@@ -59,6 +68,8 @@ export function parsePage(value: unknown): Page {
       position: item.position ?? null,
       rating: item.rating ?? null,
       tradeable: item.tradeable ?? null,
+      nationId: optionalId(item.nationId), leagueId: optionalId(item.leagueId),
+      clubId: optionalId(item.clubId), rarityId: optionalId(item.rarityId),
     };
   });
   return { items, nextCursor: value.nextCursor };

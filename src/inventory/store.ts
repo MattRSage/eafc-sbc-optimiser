@@ -60,7 +60,7 @@ export function reconcile(profile: Profile, raw: unknown, now = new Date().toISO
   return { ...profile, items, latest: { ...summary, savedAt: now } };
 }
 
-export const exportFields = ['instanceId', 'definitionId', 'name', 'rating', 'position', 'tradeable', 'provenance', 'protected', 'corrections', 'correctedAt', 'lastSeen', 'freshness'] as const;
+export const exportFields = ['instanceId', 'definitionId', 'name', 'rating', 'position', 'tradeable', 'nationId', 'leagueId', 'clubId', 'rarityId', 'provenance', 'protected', 'corrections', 'correctedAt', 'lastSeen', 'freshness'] as const;
 export type ExportField = typeof exportFields[number];
 export function reviewedExport(profile: Profile, fields: readonly ExportField[]) {
   return {
@@ -68,7 +68,7 @@ export function reviewedExport(profile: Profile, fields: readonly ExportField[])
     latestImport: profile.latest,
     items: profile.items.map(item => {
       const values = { ...item.reported, ...item.corrections, protected: item.protected, corrections: Object.fromEntries(Object.entries(item.corrections).filter(([key]) => fields.includes(key as ExportField))), correctedAt: item.correctedAt, lastSeen: item.lastSeen, freshness: item.freshness };
-      return Object.fromEntries(exportFields.filter(key => fields.includes(key)).map(key => [key, values[key]]));
+      return Object.fromEntries(exportFields.filter(key => fields.includes(key)).map(key => [key, values[key] ?? null]));
     }),
   };
 }

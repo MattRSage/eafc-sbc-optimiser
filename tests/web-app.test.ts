@@ -8,7 +8,7 @@ const card = (id = 'invented-copy-a') => ({ id, definitionId: 'invented-definiti
 
 describe('Web App inventory boundary', () => {
   it('retains only allowlisted evidence; defaults and absent fields stay unknown', () => {
-    expect(normalizeResponse(response([card()]), 'club', 0)).toEqual({ items: [{ instanceId: 'invented-copy-a', definitionId: 'invented-definition-a', rating: 84, name: null, position: null, tradeable: null }], nextCursor: null });
+    expect(normalizeResponse(response([card()]), 'club', 0)).toEqual({ items: [{ instanceId: 'invented-copy-a', definitionId: 'invented-definition-a', rating: 84, name: null, position: null, tradeable: null, nationId: null, leagueId: null, clubId: null, rarityId: null }], nextCursor: null });
     expect(normalizeResponse(response([{ ...card(), rating: 0 }]), 'club', 0).items[0]?.rating).toBeNull();
   });
   it('requires the source-specific explicit end marker', () => {
@@ -151,4 +151,33 @@ it('accepts complete storage collections beyond the club page size but keeps bou
   expect(normalizeResponse(response(cards), 'sbc-storage', 0).items).toHaveLength(200);
   expect(() => normalizeResponse(response(cards, false), 'sbc-storage', 0)).toThrow('malformed-end-marker');
   expect(() => normalizeResponse(response(Array(10_001).fill(card())), 'sbc-storage', 0)).toThrow('malformed-page-size');
+});
+
+it('maps attached names and positive category IDs without accepting entity defaults', () => {
+  const normalize = (extra: object) => normalizeResponse(response([{ ...card(), ...extra }]), 'club', 0).items[0]!;
+  expect(normalize({ getStaticData: () => ({ knownAs: 'Synthetic Alias', firstName: 'Alex', lastName: 'Example' }), nationId: 12, leagueId: 34, teamId: 56, rareflag: 1, tradable: false, untradeableCount: 1 })).toMatchObject({ name: 'Synthetic Alias', nationId: 12, leagueId: 34, clubId: 56, rarityId: 1, tradeable: false });
+  expect(normalize({ getStaticData: () => ({ firstName: 'Alex', lastName: 'Example' }) }).name).toBe('Alex Example');
+  for (const tradable of [true, false, undefined]) {
+    expect(normalize({ getStaticData: () => ({ knownAs: '', firstName: '', lastName: '' }), preferredPosition: 0, tradable, untradeableCount: 0, nationId: -1, leagueId: 0, teamId: '56', rareflag: 0 })).toMatchObject({ name: null, position: null, tradeable: null, nationId: null, leagueId: null, clubId: null, rarityId: null });
+  }
+  expect(normalize({ getStaticData: () => ({ knownAs: 'x'.repeat(101) }), rareflag: -1 }).name).toBeNull();
+});
+
+it('preserves enriched evidence, corrections and protection through bridge and repeat save', async () => {
+  const { reconcile, reviewedExport } = await import('../src/inventory/store');
+  const run = async (name: string) => importInventory({ evidence: 'internal-inventory-service',
+    readClubPage: async () => normalizeResponse(response([{ ...card(), getStaticData: () => ({ knownAs: name }), nationId: 12, leagueId: 34, teamId: 56, rareflag: 1 }]), 'club', 0),
+    readStoragePage: async () => ({ items: [], nextCursor: null }),
+  });
+  const first = reconcile({ id: 'synthetic-profile', label: 'Example', items: [], latest: null }, parseSnapshot(await run('First')));
+  first.items[0]!.protected = true;
+  first.items[0]!.corrections = { name: 'Manual name', position: 'ST' };
+  const second = reconcile(first, parseSnapshot(await run('Second')));
+  expect(second.items).toHaveLength(1);
+  expect(second.items[0]).toMatchObject({ protected: true, corrections: { name: 'Manual name', position: 'ST' }, reported: { name: 'Second', nationId: 12, leagueId: 34, clubId: 56, rarityId: 1, provenance: { kind: 'internal-inventory-service', source: 'club' } } });
+  expect(reviewedExport(second, ['name', 'nationId', 'clubId']).items).toEqual([{ name: 'Manual name', nationId: 12, clubId: 56 }]);
+  const raw = await run('Third');
+  for (const field of ['nationId', 'leagueId', 'clubId', 'rarityId']) {
+    expect(parseSnapshot({ ...raw, items: [{ ...raw.items[0], [field]: 'invalid' }] })).toBeNull();
+  }
 });
