@@ -1,0 +1,118 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+export async function testLibrary(controls, target) {
+  const create = async label => {
+    await controls.locator('#profile-label').fill(label);
+    await controls.locator('#profile-create').click();
+    await controls.waitForFunction(label => document.querySelector('#local-profile').selectedOptions[0]?.textContent === label, label);
+    return controls.locator('#local-profile').inputValue();
+  };
+  const save = async () => {
+    await controls.locator('#profile-confirm').check();
+    await controls.locator('#inventory-save').click();
+    await controls.waitForFunction(() => !document.querySelector('#profile-confirm').checked);
+  };
+  const a = await create('Synthetic A');
+  await controls.locator('#inventory-save').click();
+  await controls.locator('#library-message').filter({ hasText: 'confirm its account/club' }).waitFor();
+  assert.equal(await controls.locator('.saved-item').count(), 0);
+  await save();
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  await controls.locator('.saved-item').first().getByRole('button', { name: 'Protect player', exact: true }).click();
+  await controls.getByRole('button', { name: 'Unprotect player', exact: true }).waitFor();
+  await controls.locator('.saved-item').first().locator('summary').click();
+  await controls.locator('.saved-item').first().locator('textarea').fill('{"name":"Corrected synthetic player","rating":90}');
+  await controls.locator('.saved-item').first().getByRole('button', { name: 'Save manual corrections' }).click();
+  await controls.locator('.saved-item').first().filter({ hasText: 'Corrected synthetic player' }).waitFor();
+  await save();
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  assert.equal(await controls.getByRole('button', { name: 'Unprotect player', exact: true }).count(), 1);
+  await controls.reload();
+  await controls.locator('#local-profile option').filter({ hasText: 'Synthetic A' }).waitFor({ state: 'attached' });
+  await controls.locator('#local-profile').selectOption(a);
+  assert.match(await controls.locator('.saved-item').first().textContent(), /Corrected synthetic player/);
+  assert.equal(await controls.getByRole('button', { name: 'Unprotect player', exact: true }).count(), 1);
+  await controls.locator('#protected-only').check();
+  assert.equal(await controls.locator('.saved-item').count(), 1);
+  await controls.locator('#protected-only').uncheck();
+  await controls.locator('#inventory-source').selectOption('sbc-storage');
+  assert.equal(await controls.locator('.saved-item').count(), 1);
+  await controls.locator('#inventory-source').selectOption('');
+  await controls.locator('#inventory-search').fill('Corrected');
+  assert.equal(await controls.locator('.saved-item').count(), 1);
+  await controls.locator('#inventory-search').fill('');
+  const b = await create('Synthetic B');
+  assert.equal(await controls.locator('.saved-item').count(), 0);
+  await save();
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  assert.equal(await controls.getByRole('button', { name: 'Unprotect player', exact: true }).count(), 0);
+  await controls.locator('#local-profile').selectOption(a);
+  await controls.locator('#inventory-preview').click();
+  const preview = await controls.locator('#inventory-preview-text').textContent();
+  assert.equal(JSON.parse(preview).items[0].instanceId, undefined);
+  assert.equal(JSON.parse(preview).items[0].name, 'Corrected synthetic player');
+  assert.ok(!preview.includes('Synthetic A'));
+  const downloadEvent = controls.waitForEvent('download');
+  await controls.locator('#inventory-download').click();
+  const download = await downloadEvent;
+  await download.saveAs('test-results/local-inventory-export.json');
+  assert.equal(await readFile('test-results/local-inventory-export.json', 'utf8'), preview);
+  await controls.locator('#export-fields input[value="name"]').uncheck();
+  assert.equal(await controls.locator('#inventory-download').isDisabled(), true);
+
+  // Interrupt a real IndexedDB write after it is staged, before commit.
+  await controls.evaluate(() => {
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function(...args) {
+      const request = original.apply(this, args);
+      this.transaction.abort();
+      IDBObjectStore.prototype.put = original;
+      return request;
+    };
+  });
+  await controls.getByRole('button', { name: 'Unprotect player', exact: true }).click();
+  await controls.locator('#library-message').filter({ hasText: 'Previous inventory was retained' }).waitFor();
+  await controls.reload();
+  await controls.locator('#local-profile option').filter({ hasText: 'Synthetic A' }).waitFor({ state: 'attached' });
+  await controls.locator('#local-profile').selectOption(a);
+  assert.equal(await controls.getByRole('button', { name: 'Unprotect player', exact: true }).count(), 1);
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  const reimport = async mode => {
+    await target.evaluate(mode => { window.inventoryFixture.mode = mode; }, mode);
+    await controls.locator('#import-start').click();
+    await controls.waitForFunction(() => !document.querySelector('#import-review').disabled);
+    await save();
+  };
+  await reimport('normal');
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  assert.equal(await controls.getByRole('button', { name: 'Unprotect player', exact: true }).count(), 1);
+  await reimport('storage-failure');
+  assert.match(await controls.locator('#library-coverage').textContent(), /partial/);
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  assert.match(await controls.locator('.saved-item').last().textContent(), /not-rechecked/);
+  await reimport('missing');
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  await controls.locator('#stale-only').check();
+  assert.equal(await controls.locator('.saved-item').count(), 2);
+  await controls.locator('.saved-item').first().getByRole('button', { name: 'Remove confirmed missing record' }).click();
+  assert.equal(await controls.locator('.saved-item').count(), 2);
+  await controls.locator('.saved-item').first().locator('input[type=checkbox]').check();
+  await controls.locator('.saved-item').first().getByRole('button', { name: 'Remove confirmed missing record' }).click();
+  await controls.waitForFunction(() => document.querySelectorAll('.saved-item').length === 1);
+  await controls.locator('#stale-only').uncheck();
+  await reimport('normal');
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  await controls.screenshot({ path: 'test-results/saved-inventory.png', fullPage: true });
+  await controls.locator('#inventory-clear').click();
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  await controls.locator('#clear-confirm').check();
+  await controls.locator('#inventory-clear').click();
+  await controls.locator('#library-message').filter({ hasText: 'All saved inventory profiles' }).waitFor();
+  await controls.reload();
+  await controls.waitForFunction(() => document.querySelector('#library-coverage').textContent.includes('No saved import'));
+  assert.equal(await controls.locator('#local-profile option').count(), 1);
+  assert.equal(await controls.locator('.saved-item').count(), 0);
+  assert.notEqual(a, b);
+  console.log('PASS: local profile confirmation/separation, atomic interrupted write, reload, repeat save, protection, corrections, filters, reviewed download and clear.');
+}

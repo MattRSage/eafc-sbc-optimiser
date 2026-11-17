@@ -1,6 +1,6 @@
 # Web App inventory adapter reference
 
-Issue #9 adds an in-memory import through the signed-in Web App's inventory services. The popup provides **Import club**, progress, **Cancel import**, and **Review imported items**. Closing the popup leaves the explicitly started run active in that tab. Reopening the popup restores progress. Reloading or leaving the tab discards results. There is no persistence, automatic restart, export, or background synchronisation.
+Issue #9 adds an in-memory import through the signed-in Web App's inventory services. The popup provides **Import club**, progress, **Cancel import**, and **Review imported items**. Closing the popup leaves the explicitly started run active in that tab. Reopening the popup restores progress. Reloading or leaving the tab discards results. Reviewed results can now be saved separately to [local inventory](local-inventory.md). There is no automatic save, restart, or background synchronisation.
 
 ## Supported service contract
 

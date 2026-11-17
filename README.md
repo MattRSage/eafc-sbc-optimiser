@@ -2,7 +2,7 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, and in-memory result review. Synthetic tests pass; live ownership, identity, and coverage remain unverified. DOM observations stay separate. No persistent inventory manager or solver yet.
+> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, result review, and deliberate local persistence with profiles, protection, corrections, and reviewed export. Synthetic tests pass; live ownership, identity, and coverage remain unverified. DOM observations stay separate. No solver yet.
 
 ## Goal
 
@@ -101,6 +101,20 @@ No EA credentials or session data should ever be committed to this repository.
 
 After loading the extension, sign into the official Web App yourself. Open the popup and select **Import club**. The popup shows progress and separate club and SBC storage coverage. **Cancel import** prevents subsequent requests. **Review imported items** shows the retained result after the run stops.
 
-Closing the popup keeps the explicitly started run active in that tab. Reopen the popup to check progress or cancel. Reloading the Web App clears the in-memory results. Each new import requires another deliberate start. No automatic import, persistent inventory, or inventory export is included.
+Closing the popup keeps the explicitly started run active in that tab. Reopen the popup to check progress or cancel. Reloading the Web App clears the in-memory results. Each new import requires another deliberate start. Saving reviewed results to local inventory is a separate, deliberate action. No automatic import or background synchronisation runs.
 
 A complete service traversal names club and SBC storage as its sources; real ownership and complete real-club coverage remain unverified. Follow the [manual validation procedure](docs/validate-live-import.md) for live checks.
+
+## Save and review local inventory
+
+1. After an import stops, select **Review imported items**.
+2. Create a local profile with an invented label, or select an existing profile. Use separate profiles for separate accounts or clubs.
+3. Confirm that the reviewed import belongs to the selected profile. Account changes cannot be detected automatically.
+4. Select **Save reviewed import to profile**. Saved records, coverage, protection flags, and corrections survive popup and Web App reloads.
+5. Filter by name or ID, source, protection, or missing status. Select **Protect player** to retain a protection choice for future planning. No solver is included.
+6. To correct a field, expand **Manual corrections and reported evidence**. Enter a JSON object such as `{"name":"Example player","rating":84}` and select **Save manual corrections**. Use `{}` to clear overrides.
+7. To export, select fields and then **Review selected fields**. Inspect the preview before selecting **Download reviewed inventory JSON**. IDs are excluded by default.
+
+Corrections support name, rating, position, and tradeable. They remain separate from reported evidence and persist across imports. Missing records remain stored until you confirm their removal. A failed or partial import never deletes previous records. The [local inventory reference](docs/local-inventory.md) defines freshness and coverage.
+
+To erase saved inventory, select the erase checkbox and then **Clear local inventory**. This removes every saved profile, protection choice, and correction. In-memory imports and DOM sessions are separate; reload the Web App to discard the import, or use **Clear session** for DOM observations.
