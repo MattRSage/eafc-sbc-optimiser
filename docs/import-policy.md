@@ -4,7 +4,7 @@
 
 On 2026-11-17, the project owner approved user-initiated club import through the signed-in EA Web App's internal inventory services. The goal is full-club import without browsing every card. The owner accepted the unresolved EA terms and account-enforcement risk discussed before approval. This decision does not establish EA permission.
 
-This is a policy change only. The current extension still implements the DOM spike described in [the feasibility report](feasibility.md). No internal-service importer has been implemented or tested on an EA account.
+The extension now implements the [inventory adapter](web-app-import.md) alongside the DOM spike described in [the feasibility report](feasibility.md). The adapter has synthetic test coverage. No live account import has been verified.
 
 ## Permitted scope
 

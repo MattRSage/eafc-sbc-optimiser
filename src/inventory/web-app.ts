@@ -1,0 +1,73 @@
+import { InventoryServiceError, type InventorySource } from './import';
+
+export const PAGE_SIZE = 100;
+export const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+const identifier = (value: unknown): string => {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return String(value);
+  if (typeof value === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(value) && value !== '0') return value;
+  throw new InventoryServiceError('malformed');
+};
+
+export function normalizeResponse(value: unknown, source: InventorySource, offset: number) {
+  if (!isRecord(value) || typeof value.success !== 'boolean') throw new InventoryServiceError('malformed');
+  if (!value.success) {
+    throw new InventoryServiceError(value.status === 401 || value.status === 403 ? 'authentication' : value.status === 429 ? 'rate-limit' : 'service');
+  }
+  const response = value.response;
+  const endKey = source === 'club' ? 'retrievedAll' : 'endOfList';
+  if (!isRecord(response) || !Array.isArray(response.items) || response.items.length > PAGE_SIZE || typeof response[endKey] !== 'boolean') throw new InventoryServiceError('malformed');
+  if (!response[endKey] && response.items.length === 0) throw new InventoryServiceError('malformed');
+  const items = response.items.map((item: unknown) => {
+    if (!isRecord(item) || item.concept === true) throw new InventoryServiceError('malformed');
+    const rating = item.rating;
+    if (rating != null && (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 0 || rating > 99)) throw new InventoryServiceError('malformed');
+    // Entity defaults cannot establish whether these optional values were supplied.
+    return { instanceId: identifier(item.id), definitionId: identifier(item.definitionId), name: null, position: null, rating: rating === 0 ? null : rating ?? null, tradeable: null };
+  });
+  return { items, nextCursor: response[endKey] ? null : String(offset + PAGE_SIZE) };
+}
+
+interface Observable {
+  observe(owner: object, callback: (sender: unknown, response: unknown) => void): void;
+  unobserve(owner: object): void;
+}
+
+export function readWebAppPage(root: unknown, source: InventorySource, cursor: string | null, signal: AbortSignal): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(new InventoryServiceError('service')); return; }
+    const offset = cursor === null ? 0 : Number(cursor);
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset % PAGE_SIZE !== 0 || offset >= 10_000) { reject(new InventoryServiceError('malformed')); return; }
+    let observable: Observable | undefined;
+    let settled = false;
+    const owner = {};
+    const finish = (value: unknown, error = false) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener('abort', abort);
+      try { observable?.unobserve(owner); } catch { /* Cleanup must not prevent cancellation. */ }
+      if (error) reject(value); else resolve(value);
+    };
+    const abort = () => finish(new InventoryServiceError('service'), true);
+    try {
+      if (!isRecord(root) || !isRecord(root.services) || typeof root.UTSearchCriteriaDTO !== 'function' || !isRecord(root.SearchType) || !['string', 'number'].includes(typeof root.SearchType.PLAYER)) throw new InventoryServiceError('unsupported-service');
+      const service = source === 'club' ? root.services.Club : root.services.Item;
+      const method = source === 'club' ? 'search' : 'searchStorageItems';
+      if (!isRecord(service) || typeof service[method] !== 'function') throw new InventoryServiceError('unsupported-service');
+      const Criteria = root.UTSearchCriteriaDTO as new () => Record<string, unknown>;
+      const criteria = new Criteria();
+      criteria.type = root.SearchType.PLAYER;
+      criteria.offset = offset;
+      criteria.count = PAGE_SIZE;
+      const result: unknown = service[method].call(service, criteria);
+      if (!isRecord(result) || typeof result.observe !== 'function' || typeof result.unobserve !== 'function') throw new InventoryServiceError('malformed');
+      observable = result as unknown as Observable;
+      signal.addEventListener('abort', abort, { once: true });
+      if (signal.aborted) { abort(); return; }
+      observable.observe(owner, (_sender, value) => {
+        if (settled) return;
+        try { finish(normalizeResponse(value, source, offset)); }
+        catch (error) { finish(error instanceof InventoryServiceError ? error : new InventoryServiceError('malformed'), true); }
+      });
+    } catch (error) { finish(error instanceof InventoryServiceError ? error : new InventoryServiceError('service'), true); }
+  });
+}

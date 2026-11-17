@@ -2,8 +2,10 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   manifest: {
-    name: 'SBC DOM feasibility',
-    description: 'Opt-in, local-only player-list DOM observations. Owned-card identity is unverified.',
+    name: 'SBC inventory companion',
+    permissions: ['scripting'],
+    host_permissions: ['https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*'],
+    description: 'User-started, local-only inventory import and DOM observations. Live ownership remains unverified.',
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'none'; connect-src 'none'",
     },

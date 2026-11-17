@@ -1,3 +1,4 @@
+import { testInventory } from './inventory-browser.mjs';
 import { chromium } from 'playwright';
 import { createHash } from 'node:crypto';
 import { readFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
@@ -8,7 +9,9 @@ import assert from 'node:assert/strict';
 const extension = resolve('.output/chrome-mv3');
 const manifest = JSON.parse(await readFile(join(extension, 'manifest.json'), 'utf8'));
 assert.equal(manifest.manifest_version, 3);
-assert.deepEqual(manifest.permissions ?? [], []);
+assert.deepEqual(manifest.permissions, ['scripting']);
+assert.deepEqual(manifest.host_permissions, ['https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*']);
+assert.equal(manifest.web_accessible_resources, undefined);
 assert.deepEqual(manifest.content_scripts[0].matches, ['https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*']);
 assert.equal(manifest.content_scripts[0].world, 'ISOLATED');
 const id = createHash('sha256').update(extension).digest('hex').slice(0, 32).replace(/[0-9a-f]/g, char => String.fromCharCode(97 + parseInt(char, 16)));
@@ -208,6 +211,7 @@ try {
   assert(!((await page.locator('#preview').textContent()).includes('Stopped Example')));
   await click('Clear session');
   assert.match(await counts(), /0 raw partial observations · 0 reconciled candidates · 0 confirmed owned items/);
+  await testInventory({ context, target, send, id });
   assert.deepEqual(errors, []);
   assert.deepEqual(requests, []);
   console.log('PASS: built MV3 extension, opt-in/stop/restart, deduplication, rendered visibility, redaction/download, reload reset, popup fallback, content-script main/bio extraction, hidden-field exclusion, zero external requests.');

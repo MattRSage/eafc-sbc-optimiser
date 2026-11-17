@@ -2,11 +2,11 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** Opt-in player-list extraction supports one user-supplied card layout in main and bio views. It records partial visible-text observations and reconciles continuously visible cards into provisional candidates. Owned-card identity and broader layout coverage remain unverified. A synthetic club import engine is available for adapter development; no live owned-card importer or solver yet.
+> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, and in-memory result review. Synthetic tests pass; live ownership, identity, and coverage remain unverified. DOM observations stay separate. No persistent inventory manager or solver yet.
 
 ## Goal
 
-Build a full-club inventory through an explicitly started, read-only import using the official EA FC Web App's internal services, then plan SBC solutions that minimise sacrificed player value and coins spent. The synthetic import engine validates pagination and failure handling without contacting EA. The current extension still captures partial visible-DOM observations. See the [inventory import contract](docs/inventory-import.md) for the adapter handoff and completion rules.
+Build a full-club inventory through an explicitly started, read-only import using the official EA FC Web App's internal services, then plan SBC solutions that minimise sacrificed player value and coins spent. The adapter supports a narrow internal-service contract, with separate synthetic tests for pagination and failure handling. DOM observations remain separate. See the [adapter reference](docs/web-app-import.md) and [manual validation procedure](docs/validate-live-import.md).
 
 The owner approved this direction on 2026-11-17 with unresolved EA terms and account-enforcement risk. See the [import policy](docs/import-policy.md) for the scope and retained restrictions.
 
@@ -32,7 +32,7 @@ The owner approved this direction on 2026-11-17 with unresolved EA terms and acc
 | Persistence after proof of concept | IndexedDB, potentially via Dexie |
 | SBC optimisation after inventory | Evaluate GLPK.js or another suitable constraint solver |
 
-The stack is deliberately provisional: validate the read-only import with synthetic service fixtures before building the full product.
+The stack is deliberately provisional: validate the read-only import with synthetic service fixtures and separate manual live checks before building the full product.
 
 ## Roadmap
 
@@ -96,3 +96,11 @@ npm run test:browser
 The browser test uses a temporary profile and synthetic data only. It records a reviewed JSON export and screenshot in ignored `test-results/`. For iterative extension development, run `npm run dev`; use the production build for the documented permission and network boundaries.
 
 No EA credentials or session data should ever be committed to this repository.
+
+## Import club inventory
+
+After loading the extension, sign into the official Web App yourself. Open the popup and select **Import club**. The popup shows progress and separate club and SBC storage coverage. **Cancel import** prevents subsequent requests. **Review imported items** shows the retained result after the run stops.
+
+Closing the popup keeps the explicitly started run active in that tab. Reopen the popup to check progress or cancel. Reloading the Web App clears the in-memory results. Each new import requires another deliberate start. No automatic import, persistent inventory, or inventory export is included.
+
+A complete service traversal names club and SBC storage as its sources; real ownership and complete real-club coverage remain unverified. Follow the [manual validation procedure](docs/validate-live-import.md) for live checks.
