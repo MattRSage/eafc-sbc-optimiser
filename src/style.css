@@ -18,3 +18,5 @@ input:not([type="checkbox"]), select { max-width: 100%; box-sizing: border-box; 
 .correction-field { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .correction-field input { min-width: 0; }
 #inventory-count { font-weight: 600; }
+
+#planner-candidates { max-height: 24rem; overflow-y: auto; }

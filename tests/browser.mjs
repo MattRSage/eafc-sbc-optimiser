@@ -1,3 +1,4 @@
+import { testPlanner } from './planner-browser.mjs';
 import { testInventory } from './inventory-browser.mjs';
 import { chromium } from 'playwright';
 import { createHash } from 'node:crypto';
@@ -212,6 +213,7 @@ try {
   await click('Clear session');
   assert.match(await counts(), /0 raw partial observations · 0 reconciled candidates · 0 confirmed owned items/);
   await testInventory({ context, target, send, id });
+  await testPlanner(context, id);
   assert.deepEqual(errors, []);
   assert.deepEqual(requests, []);
   console.log('PASS: built MV3 extension, opt-in/stop/restart, deduplication, rendered visibility, redaction/download, reload reset, popup fallback, content-script main/bio extraction, hidden-field exclusion, zero external requests.');

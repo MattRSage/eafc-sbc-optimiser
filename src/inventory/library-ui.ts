@@ -1,3 +1,4 @@
+import { mountPlanner } from '../planner/ui';
 import type { ImportSnapshot } from './import';
 import { emptyState, exportFields, parseCorrections, reconcile, reviewedExport, transact, verification, type ExportField, type InventoryState, type Profile } from './store';
 
@@ -9,6 +10,7 @@ export function mountLibrary(root: HTMLElement, getImport: () => ImportSnapshot 
     <p><label><input type="checkbox" id="profile-confirm">I reviewed the stopped import and confirm it belongs to the selected account/club profile.</label></p>
     <button id="inventory-save">Save reviewed import to profile</button>
     <p id="library-message" role="status"></p><p id="library-coverage"></p>
+    <div id="local-planner"></div>
     <label>Search name or ID <input id="inventory-search"></label>
     <label>Source <select id="inventory-source"><option value="">All sources</option><option value="club">Club</option><option value="sbc-storage">SBC storage</option></select></label>
     <label><input type="checkbox" id="protected-only">Protected only</label>
@@ -48,6 +50,7 @@ export function mountLibrary(root: HTMLElement, getImport: () => ImportSnapshot 
     select.value = selected;
     const p = state.profiles.find(p => p.id === select.value);
     el('library-coverage').textContent = p?.latest ? `Last saved import: ${p.latest.status}; club: ${p.latest.coverage.club}; SBC storage: ${p.latest.coverage['sbc-storage']}; ${new Date(p.latest.savedAt).toLocaleString()}. ${p.latest.problem ?? ''} Saved records: ${p.items.length}. Coverage describes that import only; retained records may be stale.` : 'No saved import in this profile.';
+    mountPlanner(el('local-planner'), p);
     const list = el('inventory-list'); list.replaceChildren();
     const query = el<HTMLInputElement>('inventory-search').value.trim().toLowerCase();
     for (const item of p?.items ?? []) {
