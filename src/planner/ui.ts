@@ -9,7 +9,7 @@ export function mountPlanner(root: HTMLElement, profile: Profile | undefined) {
     <p>${verification} Storage, protected, missing and not-rechecked records are excluded. Unknown name, position and tradeability do not affect this rating-only model. Manual rating corrections apply.</p>
     <label>Minimum squad rating <input id="planner-rating" type="number" min="1" max="99" value="84"></label>
     <label><input id="planner-shape" type="checkbox">I checked the challenge: exactly 11 players, minimum rating only, no other constraints.</label>
-    <p>Review each candidate you want to use. Confirm that it is currently owned, a real non-loan player card eligible for this Puzzle SBC. Enter the same player label for every version of the same footballer (use a distinct label for different people with the same name). Labels and eligibility confirmations are used only for this review and are not saved. Unreviewed cards are excluded.</p>
+    <p>Detected loan/limited-use and Evolution-enrolled cards are automatically excluded. An absent blocker is not proof of eligibility. Review each remaining candidate you want to use. Confirm that it is currently owned, a real non-loan player card eligible for this Puzzle SBC. Enter the same player label for every version of the same footballer (use a distinct label for different people with the same name). Labels and eligibility confirmations are used only for this review and are not saved. Unreviewed cards are excluded.</p>
     <div id="planner-candidates"></div>
     <button id="planner-solve" ${profile ? '' : 'disabled'}>Find local squad</button>
     <p id="planner-status" role="status">${profile ? 'Review candidates before searching.' : 'Choose a saved profile first.'}</p>

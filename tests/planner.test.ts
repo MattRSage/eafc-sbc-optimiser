@@ -50,6 +50,14 @@ describe('FUTBIN rating evidence', () => {
 });
 
 describe('local search', () => {
+  it.each(['loan', 'evolution'] as const)('excludes %s even when manually confirmed eligible', blocker => {
+    const { items, reviews } = fixture(repeat(12, 84));
+    items[0]!.reported.sbcBlocker = blocker;
+    const result = solve(items, reviews, requirements);
+    expect(result.squad?.some(card => card.instanceId === 'copy-0')).toBe(false);
+    expect(result.squad).toHaveLength(11);
+    expect(validateSquad(items, reviews, requirements, items.slice(0, 11).map(item => item.reported.instanceId))).toBe(false);
+  });
   it('excludes protection, staleness, storage, unknown ratings and unreviewed eligibility', () => {
     const { items, reviews } = fixture(repeat(17, 84));
     items[0]!.protected = true;

@@ -22,6 +22,12 @@ function playerName(item: Record<string, unknown>): string | null {
   return namePart(parts.join(' '));
 }
 
+function inventoryBlocker(item: Record<string, unknown>): { sbcBlocker?: 'loan' | 'evolution' } {
+  if (typeof item.isLimitedUse === 'function' && item.isLimitedUse() === true) return { sbcBlocker: 'loan' };
+  if (typeof item.isEnrolledInAcademy === 'function' && item.isEnrolledInAcademy() === true) return { sbcBlocker: 'evolution' };
+  return {};
+}
+
 export function normalizeResponse(value: unknown, source: InventorySource, offset: number) {
   if (!isRecord(value) || typeof value.success !== 'boolean') throw new InventoryServiceError('malformed-envelope');
   if (!value.success) {
@@ -47,6 +53,7 @@ export function normalizeResponse(value: unknown, source: InventorySource, offse
       tradeable: item.tradable === false && item.untradeableCount === 1 ? false : null,
       nationId: positiveId(item.nationId), leagueId: positiveId(item.leagueId), clubId: positiveId(item.teamId),
       rarityId: positiveId(item.rareflag),
+      ...inventoryBlocker(item),
     };
   });
   return { items, nextCursor: response[endKey] ? null : String(offset + PAGE_SIZE) };

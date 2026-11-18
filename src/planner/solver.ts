@@ -43,6 +43,8 @@ export function prepare(items: readonly SavedItem[], reviews: Reviews): { candid
     const review = Object.hasOwn(reviews, card.instanceId) ? reviews[card.instanceId] : undefined;
     const key = review?.playerKey.trim().toLowerCase();
     const reason = counts.get(card.instanceId) !== 1 ? 'Duplicate instance identity'
+      : item.reported.sbcBlocker === 'loan' ? 'Loan or limited-use card'
+      : item.reported.sbcBlocker === 'evolution' ? 'Enrolled in an Evolution'
       : item.protected ? 'Protected'
       : item.freshness !== 'seen' ? 'Missing or not rechecked'
       : card.provenance.source !== 'club' ? 'SBC storage unsupported in this spike'
@@ -110,7 +112,7 @@ export function validateSquad(items: readonly SavedItem[], reviews: Reviews, req
     const review = Object.hasOwn(reviews, id) ? reviews[id] : undefined;
     const player = review?.playerKey.trim().toLowerCase();
     const rating = Object.hasOwn(item.corrections, 'rating') ? item.corrections.rating : item.reported.rating;
-    if (item.protected || item.freshness !== 'seen' || item.reported.provenance.source !== 'club' || !review?.eligible || !player || player.length > 100 || players.has(player) || definitions.has(item.reported.definitionId)) return false;
+    if (item.reported.sbcBlocker != null || item.protected || item.freshness !== 'seen' || item.reported.provenance.source !== 'club' || !review?.eligible || !player || player.length > 100 || players.has(player) || definitions.has(item.reported.definitionId)) return false;
     if (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 1 || rating > 99) return false;
     players.add(player); definitions.add(item.reported.definitionId); ratings.push(rating);
   }

@@ -60,7 +60,7 @@ export function reconcile(profile: Profile, raw: unknown, now = new Date().toISO
   return { ...profile, items, latest: { ...summary, savedAt: now } };
 }
 
-export const exportFields = ['instanceId', 'definitionId', 'name', 'rating', 'position', 'tradeable', 'nationId', 'leagueId', 'clubId', 'rarityId', 'provenance', 'protected', 'corrections', 'correctedAt', 'lastSeen', 'freshness'] as const;
+export const exportFields = ['instanceId', 'definitionId', 'name', 'rating', 'position', 'tradeable', 'nationId', 'leagueId', 'clubId', 'rarityId', 'sbcBlocker', 'provenance', 'protected', 'corrections', 'correctedAt', 'lastSeen', 'freshness'] as const;
 export type ExportField = typeof exportFields[number];
 export function reviewedExport(profile: Profile, fields: readonly ExportField[]) {
   return {
