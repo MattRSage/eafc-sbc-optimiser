@@ -111,8 +111,8 @@ A complete service traversal names club and SBC storage as its sources; real own
 2. Create a local profile with an invented label, or select an existing profile. Use separate profiles for separate accounts or clubs.
 3. Confirm that the reviewed import belongs to the selected profile. Account changes cannot be detected automatically.
 4. Select **Save reviewed import to profile**. Saved records, coverage, protection flags, and corrections survive popup and Web App reloads.
-5. Filter by name or ID, source, protection, or missing status. Select **Protect player** to retain a protection choice for future planning. No solver is included.
-6. To correct a field, expand **Manual corrections and reported evidence**. Enter a JSON object such as `{"name":"Example player","rating":84}` and select **Save manual corrections**. Use `{}` to clear overrides.
+5. Search by name or instance ID; filter by source, tradeability, protection, or missing status. Rows show explicit unknown values and keep each instance separate. Select **Protect player** to retain a protection choice for future planning. No solver is included.
+6. To correct a field, expand **Manual corrections and reported evidence**. Choose **Custom** for a field and enter its value, then select **Save manual corrections**. Choose **Unknown** to mark a value unknown or **Imported** to clear its override. Raw imported evidence is available in a nested diagnostics section.
 7. To export, select fields and then **Review selected fields**. Inspect the preview before selecting **Download reviewed inventory JSON**. IDs are excluded by default.
 
 Corrections support name, rating, position, and tradeable. They remain separate from reported evidence and persist across imports. Missing records remain stored until you confirm their removal. A failed or partial import never deletes previous records. The [local inventory reference](docs/local-inventory.md) defines freshness and coverage.

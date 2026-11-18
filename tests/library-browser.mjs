@@ -19,10 +19,16 @@ export async function testLibrary(controls, target) {
   assert.equal(await controls.locator('.saved-item').count(), 0);
   await save();
   assert.equal(await controls.locator('.saved-item').count(), 3);
+  assert.match(await controls.locator('.saved-item').first().textContent(), /Position: Unknown/);
+  assert.equal(await controls.locator('.saved-item h3').count(), 3);
   await controls.locator('.saved-item').first().getByRole('button', { name: 'Protect player', exact: true }).click();
   await controls.getByRole('button', { name: 'Unprotect player', exact: true }).waitFor();
-  await controls.locator('.saved-item').first().locator('summary').click();
-  await controls.locator('.saved-item').first().locator('textarea').fill('{"name":"Corrected synthetic player","rating":90}');
+  await controls.locator('.saved-item').first().locator('summary').first().click();
+  const first = controls.locator('.saved-item').first();
+  await first.getByLabel('name correction mode', { exact: true }).selectOption('custom');
+  await first.getByLabel('name correction', { exact: true }).fill('Corrected synthetic player');
+  await first.getByLabel('rating correction mode', { exact: true }).selectOption('custom');
+  await first.getByLabel('rating correction', { exact: true }).fill('90');
   await controls.locator('.saved-item').first().getByRole('button', { name: 'Save manual corrections' }).click();
   await controls.locator('.saved-item').first().filter({ hasText: 'Corrected synthetic player' }).waitFor();
   await save();
@@ -41,12 +47,39 @@ export async function testLibrary(controls, target) {
   await controls.locator('#inventory-source').selectOption('');
   await controls.locator('#inventory-search').fill('Corrected');
   assert.equal(await controls.locator('.saved-item').count(), 1);
+  await controls.locator('#inventory-search').fill('no such player');
+  assert.match(await controls.locator('#inventory-list').textContent(), /No players match/);
   await controls.locator('#inventory-search').fill('');
+  await controls.locator('#inventory-tradeable').selectOption('true');
+  assert.equal(await controls.locator('.saved-item').count(), 0);
+  await controls.locator('#inventory-tradeable').selectOption('unknown');
+  assert.equal(await controls.locator('.saved-item').count(), 3);
+  await controls.locator('#inventory-tradeable').selectOption('');
   const b = await create('Synthetic B');
+  assert.match(await controls.locator('#inventory-list').textContent(), /No players saved/);
   assert.equal(await controls.locator('.saved-item').count(), 0);
   await save();
   assert.equal(await controls.locator('.saved-item').count(), 3);
   assert.equal(await controls.getByRole('button', { name: 'Unprotect player', exact: true }).count(), 0);
+  await first.locator('summary').first().click();
+  for (const field of ['name', 'rating', 'position', 'tradeable']) {
+    await first.getByLabel(`${field} correction mode`, { exact: true }).selectOption('unknown');
+  }
+  await first.getByRole('button', { name: 'Save manual corrections' }).click();
+  await first.getByRole('heading', { name: 'Unknown name' }).waitFor();
+  assert.match(await first.textContent(), /Rating: Unknown/);
+  await first.locator('summary').first().click();
+  for (const field of ['name', 'rating', 'position', 'tradeable']) {
+    await first.getByLabel(`${field} correction mode`, { exact: true }).selectOption('imported');
+  }
+  await first.getByRole('button', { name: 'Save manual corrections' }).click();
+  await first.getByRole('heading', { name: 'Synthetic Player' }).waitFor();
+  assert.match(await first.textContent(), /no manual corrections/);
+  await controls.setViewportSize({ width: 390, height: 900 });
+  await first.locator('summary').first().click();
+  assert.equal(await controls.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await controls.screenshot({ path: 'test-results/inventory-narrow.png', fullPage: true });
+  await controls.setViewportSize({ width: 1100, height: 1000 });
   await controls.locator('#local-profile').selectOption(a);
   await controls.locator('#inventory-preview').click();
   const preview = await controls.locator('#inventory-preview-text').textContent();
@@ -94,7 +127,7 @@ export async function testLibrary(controls, target) {
   await reimport('storage-failure');
   assert.match(await controls.locator('#library-coverage').textContent(), /partial/);
   assert.equal(await controls.locator('.saved-item').count(), 3);
-  assert.match(await controls.locator('.saved-item').last().textContent(), /not-rechecked/);
+  assert.match(await controls.locator('.saved-item').last().textContent(), /Not rechecked/);
   await reimport('missing');
   assert.equal(await controls.locator('.saved-item').count(), 3);
   await controls.locator('#stale-only').check();
