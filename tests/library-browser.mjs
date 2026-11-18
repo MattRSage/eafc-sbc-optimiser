@@ -52,6 +52,10 @@ export async function testLibrary(controls, target) {
   const preview = await controls.locator('#inventory-preview-text').textContent();
   assert.equal(JSON.parse(preview).items[0].instanceId, undefined);
   assert.equal(JSON.parse(preview).items[0].name, 'Corrected synthetic player');
+  assert.equal(JSON.parse(preview).items[0].nationId, 12);
+  assert.equal(JSON.parse(preview).items[0].leagueId, 34);
+  assert.equal(JSON.parse(preview).items[0].clubId, 56);
+  assert.equal(JSON.parse(preview).items[0].rarityId, 1);
   assert.ok(!preview.includes('Synthetic A'));
   const downloadEvent = controls.waitForEvent('download');
   await controls.locator('#inventory-download').click();

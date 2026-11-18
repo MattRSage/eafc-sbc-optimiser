@@ -13,7 +13,7 @@ export async function testInventory({ context, target, send, id }) {
       return {
         observe(owner, callback) {
           setTimeout(() => {
-            const item = { id: source === 'club' ? `invented-copy-${criteria.offset}` : 'invented-storage-copy', definitionId: 'invented-definition', rating: 84, unrelated: 'discard-me' };
+            const item = { id: source === 'club' ? `invented-copy-${criteria.offset}` : 'invented-storage-copy', definitionId: 'invented-definition', rating: 84, getStaticData: () => ({ knownAs: 'Synthetic Player' }), nationId: 12, leagueId: 34, teamId: 56, rareflag: 1, unrelated: 'discard-me' };
             const response = { items: mode === 'missing' && source === 'club' ? [] : [item] };
             if (mode !== 'malformed') response[source === 'club' ? 'retrievedAll' : 'endOfList'] = mode === 'missing' || source === 'sbc-storage' || criteria.offset === 100;
             callback(this, mode === 'auth' || (mode === 'storage-failure' && source === 'sbc-storage') ? { success: false, status: 401 } : { success: true, response });
@@ -46,6 +46,8 @@ export async function testInventory({ context, target, send, id }) {
   assert.equal(completed.items.length, 3);
   assert.equal(completed.items[0].unrelated, undefined);
   assert.equal(completed.items[0].tradeable, null);
+  assert.equal(completed.items[0].name, 'Synthetic Player');
+  assert.equal(completed.items[0].clubId, 56);
   assert.match(completed.verification, /unverified/);
   await controls.screenshot({ path: 'test-results/inventory-review.png', fullPage: true });
   assert.deepEqual(await target.evaluate(() => window.inventoryFixture.calls), [

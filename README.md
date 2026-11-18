@@ -2,7 +2,7 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, result review, and deliberate local persistence with profiles, protection, corrections, and reviewed export. Synthetic tests pass; live ownership, identity, and coverage remain unverified. DOM observations stay separate. No solver yet.
+> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, result review, and deliberate local persistence with profiles, protection, corrections, and reviewed export. Synthetic tests pass; user-reported checks confirm 325 club players, empty storage and protection persistence. Full live identity and coverage validation remains outstanding. DOM observations stay separate. No solver yet.
 
 ## Goal
 
@@ -118,3 +118,9 @@ A complete service traversal names club and SBC storage as its sources; real own
 Corrections support name, rating, position, and tradeable. They remain separate from reported evidence and persist across imports. Missing records remain stored until you confirm their removal. A failed or partial import never deletes previous records. The [local inventory reference](docs/local-inventory.md) defines freshness and coverage.
 
 To erase saved inventory, select the erase checkbox and then **Clear local inventory**. This removes every saved profile, protection choice, and correction. In-memory imports and DOM sessions are separate; reload the Web App to discard the import, or use **Clear session** for DOM observations.
+
+### Player details and scoped live evidence
+
+Imported items retain available attached names and positive nation, league, club and rarity IDs. These are category IDs, not translated labels. Positions, ambiguous tradeability, default rarity and missing details remain unknown. A positive untradeable count with a matching false tradeability flag supports an untradeable result. Fields pass through bridge validation, local saves and reviewed export; corrections and protection survive repeat saves.
+
+After #14, the user confirmed the reported 325 club players and empty SBC storage, and protection surviving reopening and repeat import/save. This is scoped user evidence, not independent verification of every identity or coverage case. Nonempty SBC storage, duplicate card identities, live cancellation and enriched detail accuracy remain outstanding. Automated tests cover cancellation. See the [live validation procedure](docs/validate-live-import.md).

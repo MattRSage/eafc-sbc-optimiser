@@ -9,6 +9,19 @@ const identifier = (value: unknown, field: 'instance-id' | 'definition-id'): str
   throw new InventoryServiceError(`malformed-${field}`);
 };
 
+const positiveId = (value: unknown): number | null => typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
+const namePart = (value: unknown): string | null => typeof value === 'string' && value.trim().length > 0 && value.length <= 100 ? value.trim() : null;
+
+function playerName(item: Record<string, unknown>): string | null {
+  if (typeof item.getStaticData !== 'function') return null;
+  const data: unknown = item.getStaticData();
+  if (!isRecord(data)) return null;
+  const knownAs = namePart(data.knownAs);
+  if (knownAs) return knownAs;
+  const parts = [namePart(data.firstName), namePart(data.lastName)].filter(Boolean);
+  return namePart(parts.join(' '));
+}
+
 export function normalizeResponse(value: unknown, source: InventorySource, offset: number) {
   if (!isRecord(value) || typeof value.success !== 'boolean') throw new InventoryServiceError('malformed-envelope');
   if (!value.success) {
@@ -27,8 +40,14 @@ export function normalizeResponse(value: unknown, source: InventorySource, offse
     if (item.concept === true) throw new InventoryServiceError('malformed-concept');
     const rating = item.rating;
     if (rating != null && (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 0 || rating > 99)) throw new InventoryServiceError('malformed-rating');
-    // Entity defaults cannot establish whether these optional values were supplied.
-    return { instanceId: identifier(item.id, 'instance-id'), definitionId: identifier(item.definitionId, 'definition-id'), name: null, position: null, rating: rating === 0 ? null : rating ?? null, tradeable: null };
+    return {
+      instanceId: identifier(item.id, 'instance-id'), definitionId: identifier(item.definitionId, 'definition-id'),
+      name: playerName(item), position: null, rating: rating === 0 ? null : rating ?? null,
+      // The factory can synthesize tradable=true; only the positive untradeable count disambiguates false.
+      tradeable: item.tradable === false && item.untradeableCount === 1 ? false : null,
+      nationId: positiveId(item.nationId), leagueId: positiveId(item.leagueId), clubId: positiveId(item.teamId),
+      rarityId: positiveId(item.rareflag),
+    };
   });
   return { items, nextCursor: response[endKey] ? null : String(offset + PAGE_SIZE) };
 }
