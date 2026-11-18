@@ -25,6 +25,30 @@ describe('provisional rating model', () => {
   });
 });
 
+describe('FUTBIN rating evidence', () => {
+  // Displayed 86-rated combinations on 2026-11-18; columns are counts for ratings 81–89.
+  // https://www.futbin.com/27/squad-building-challenges/rating-combinations?rating=86
+  const combinations = [
+    [0,0,0,6,0,1,4,0,0], [0,0,1,4,1,1,4,0,0], [0,0,0,3,3,2,3,0,0],
+    [0,0,0,1,6,1,3,0,0], [0,0,2,5,0,0,2,2,0], [0,0,0,6,0,3,0,2,0],
+    [0,0,0,0,6,3,2,0,0], [0,0,0,1,6,2,1,1,0], [0,0,0,2,6,1,0,2,0],
+    [0,0,0,1,3,6,1,0,0], [0,0,0,0,9,0,0,2,0], [4,0,0,0,0,2,5,0,0],
+    [0,0,0,0,6,4,0,1,0], [0,0,0,3,3,4,0,0,1], [0,0,0,2,7,0,0,1,1],
+    [3,2,0,0,0,0,5,1,0], [0,0,0,1,6,3,0,0,1], [0,0,1,0,8,0,0,1,1],
+    [0,4,1,0,1,0,4,0,1], [0,0,0,0,2,9,0,0,0], [1,0,0,0,0,10,0,0,0],
+  ];
+  it.each(combinations.map((counts, index) => ({ counts, row: index + 1 })))('matches displayed row $row', ({ counts }) => {
+    const ratings = counts.flatMap((count, index) => repeat(count, 81 + index));
+    expect(ratings).toHaveLength(11);
+    expect(squadRating(ratings)).toBe(86);
+    const { items, reviews } = fixture(ratings);
+    expect(validateSquad(items, reviews, { ...requirements, minRating: 86 }, items.map(item => item.reported.instanceId))).toBe(true);
+  });
+  it('matches the FAQ rounding-boundary example', () => {
+    expect(squadRating([...repeat(9, 84), 83, 83])).toBe(84);
+  });
+});
+
 describe('local search', () => {
   it('excludes protection, staleness, storage, unknown ratings and unreviewed eligibility', () => {
     const { items, reviews } = fixture(repeat(17, 84));
