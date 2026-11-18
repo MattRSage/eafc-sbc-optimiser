@@ -11,6 +11,20 @@ describe('Web App inventory boundary', () => {
     expect(normalizeResponse(response([card()]), 'club', 0)).toEqual({ items: [{ instanceId: 'invented-copy-a', definitionId: 'invented-definition-a', rating: 84, name: null, position: null, tradeable: null, nationId: null, leagueId: null, clubId: null, rarityId: null }], nextCursor: null });
     expect(normalizeResponse(response([{ ...card(), rating: 0 }]), 'club', 0).items[0]?.rating).toBeNull();
   });
+  it('retains positive loan and Evolution blockers without inferring eligibility from defaults', async () => {
+    for (const [extra, expected] of [
+      [{ isLimitedUse: () => true }, 'loan'],
+      [{ isLimitedUse: () => false, isEnrolledInAcademy: () => true }, 'evolution'],
+      [{ isLimitedUse: () => false, isEnrolledInAcademy: () => false }, undefined],
+      [{}, undefined],
+    ] as const) {
+      const page = normalizeResponse(response([{ ...card(), ...extra }]), 'club', 0);
+      expect(page.items[0]?.sbcBlocker).toBe(expected);
+      const imported = await importInventory({ evidence: 'internal-inventory-service', readClubPage: async () => page });
+      expect(imported.items[0]?.sbcBlocker).toBe(expected);
+      expect(parseSnapshot(imported)?.items[0]?.sbcBlocker).toBe(expected);
+    }
+  });
   it('requires the source-specific explicit end marker', () => {
     expect(normalizeResponse(response([card()], false), 'club', 0).nextCursor).toBe('100');
     expect(() => normalizeResponse({ success: true, response: { items: [], retrievedAll: true } }, 'sbc-storage', 0)).toThrow('malformed');

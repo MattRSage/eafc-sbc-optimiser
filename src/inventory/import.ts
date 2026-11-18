@@ -16,6 +16,7 @@ export interface OwnedInstance {
   leagueId?: number | null;
   clubId?: number | null;
   rarityId?: number | null;
+  sbcBlocker?: 'loan' | 'evolution' | null;
   provenance: { kind: 'synthetic-service' | 'internal-inventory-service'; source: InventorySource };
 }
 
@@ -61,7 +62,9 @@ export function parsePage(value: unknown): Page {
     if (item.position != null && !id(item.position)) throw new Error('malformed');
     if (item.rating != null && (typeof item.rating !== 'number' || !Number.isInteger(item.rating) || item.rating < 0 || item.rating > 99)) throw new Error('malformed');
     if (item.tradeable != null && typeof item.tradeable !== 'boolean') throw new Error('malformed');
+    if (item.sbcBlocker != null && item.sbcBlocker !== 'loan' && item.sbcBlocker !== 'evolution') throw new Error('malformed');
     return {
+      ...(item.sbcBlocker != null ? { sbcBlocker: item.sbcBlocker } : {}),
       instanceId: item.instanceId,
       definitionId: item.definitionId,
       name: item.name ?? null,
