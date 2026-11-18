@@ -2,7 +2,7 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, result review, and deliberate local persistence with profiles, protection, corrections, and reviewed export. Synthetic tests pass; user-reported checks confirm 325 club players, empty storage and protection persistence. Full live identity and coverage validation remains outstanding. DOM observations stay separate. An experimental local rating-only planner is available; its FC 27 rating model still needs live validation.
+> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, result review, and deliberate local persistence with profiles, protection, corrections, and reviewed export. Synthetic tests pass; user-reported checks confirm 325 club players, empty storage and protection persistence. Full live identity and coverage validation remains outstanding. DOM observations stay separate. An experimental local rating-only planner is available; its rating model matches 21 published FUTBIN combinations but still needs live EA validation.
 
 ## Goal
 

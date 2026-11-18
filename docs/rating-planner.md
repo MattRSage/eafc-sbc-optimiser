@@ -42,7 +42,15 @@ Production calculation uses integer numerators to avoid floating-point boundary 
 
 Synthetic examples include eleven 84s → 84, nine 84s plus two 83s → 84, eight 84s plus three 83s → 83, and eight 85s plus two 87s and one 88 → 86. These validate the implementation of the stated model, not FC 27 itself. The arithmetic mean of the last example is about 85.64.
 
-**Issue #17's evidence criterion is still open.** Before treating this as a verified FC 27 recommender, obtain manually recorded in-game results for the boundary examples, with game version and date. Do not automate EA interactions or collect raw account data. If the observed rating differs, update the formula and fixtures before removing the provisional label. The implementation PR remains draft pending this evidence.
+**Issue #17's evidence criterion is still open.** Before treating this as a verified FC 27 recommender, obtain manually recorded in-game results for the boundary examples, with game version and date. Do not automate EA interactions or collect raw account data. If the observed rating differs, update the formula and fixtures before removing the provisional label. The experimental implementation was merged in PR #20; the issue remains open for live evidence.
+
+## FUTBIN cross-check (2026-11-18)
+
+All 21 combinations displayed on [FUTBIN's FC 27 86-rated combinations page](https://www.futbin.com/27/squad-building-challenges/rating-combinations?rating=86) return 86 through the production rating function. Its FAQ also lists nine 84s plus two 83s as an 84-rated squad, matching the rounding-boundary case. These observations are preserved as offline regression tests in `tests/planner.test.ts`, including checks through the independent squad validator. Tests do not contact FUTBIN.
+
+This is agreement with a third-party calculator for the displayed examples, not an exhaustive combination check or live EA validation. The formula and UI remain provisional. Issue #17 stays open until the remaining live rating evidence is recorded.
+
+For the next live check, reload the latest extension, deliberately import and save the club, then use the planner procedure above. Confirm protected players are excluded. Manually place a recommended squad in the Web App and record the 11 ratings, predicted rating, displayed rating, game version and date. Do not submit the squad. Include rounding-boundary examples where available; share ratings only, without player or account identifiers.
 
 ## Objective and bounds
 
