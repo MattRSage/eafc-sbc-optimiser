@@ -2,7 +2,7 @@
 
 A local-first browser companion for managing an EA SPORTS FC 27 Ultimate Team club inventory and recommending cost-efficient Squad Building Challenge (SBC) solutions.
 
-> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, result review, and deliberate local persistence with profiles, protection, corrections, and reviewed export. Synthetic tests pass; user-reported checks confirm 325 club players, empty storage and protection persistence. Full live identity and coverage validation remains outstanding. DOM observations stay separate. No solver yet.
+> **Status:** User-started club and SBC storage import now has a page-context adapter, progress, cancellation, result review, and deliberate local persistence with profiles, protection, corrections, and reviewed export. Synthetic tests pass; user-reported checks confirm 325 club players, empty storage and protection persistence. Full live identity and coverage validation remains outstanding. DOM observations stay separate. An experimental local rating-only planner is available; its FC 27 rating model still needs live validation.
 
 ## Goal
 
@@ -111,7 +111,7 @@ A complete service traversal names club and SBC storage as its sources; real own
 2. Create a local profile with an invented label, or select an existing profile. Use separate profiles for separate accounts or clubs.
 3. Confirm that the reviewed import belongs to the selected profile. Account changes cannot be detected automatically.
 4. Select **Save reviewed import to profile**. Saved records, coverage, protection flags, and corrections survive popup and Web App reloads.
-5. Search by name or instance ID; filter by source, tradeability, protection, or missing status. Rows show explicit unknown values and keep each instance separate. Select **Protect player** to retain a protection choice for future planning. No solver is included.
+5. Search by name or instance ID; filter by source, tradeability, protection, or missing status. Rows show explicit unknown values and keep each instance separate. Select **Protect player** to retain a protection choice for future planning. The experimental rating-only planner excludes protected cards.
 6. To correct a field, expand **Manual corrections and reported evidence**. Choose **Custom** for a field and enter its value, then select **Save manual corrections**. Choose **Unknown** to mark a value unknown or **Imported** to clear its override. Raw imported evidence is available in a nested diagnostics section.
 7. To export, select fields and then **Review selected fields**. Inspect the preview before selecting **Download reviewed inventory JSON**. IDs are excluded by default.
 
@@ -124,3 +124,7 @@ To erase saved inventory, select the erase checkbox and then **Clear local inven
 Imported items retain available attached names and positive nation, league, club and rarity IDs. These are category IDs, not translated labels. Positions, ambiguous tradeability, default rarity and missing details remain unknown. A positive untradeable count with a matching false tradeability flag supports an untradeable result. Fields pass through bridge validation, local saves and reviewed export; corrections and protection survive repeat saves.
 
 After #14, the user confirmed the reported 325 club players and empty SBC storage, and protection surviving reopening and repeat import/save. This is scoped user evidence, not independent verification of every identity or coverage case. Nonempty SBC storage, duplicate card identities, live cancellation and enriched detail accuracy remain outstanding. Automated tests cover cancellation. See the [live validation procedure](docs/validate-live-import.md).
+
+## Experimental local SBC planner
+
+Open **Experimental rating-only SBC planner** in a saved profile to review candidate eligibility and enter an 11-player minimum-rating requirement. The search excludes protected and stale cards, rejects unsupported constraints and reports incomplete searches separately. It uses a provisional community rating formula and does not estimate coin cost. See [the planner guide and outstanding rating evidence](docs/rating-planner.md) before using a recommendation. All computation stays local; submission remains manual.
