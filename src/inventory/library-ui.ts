@@ -10,10 +10,11 @@ export function mountLibrary(root: HTMLElement, getImport: () => ImportSnapshot 
     <button id="inventory-save">Save reviewed import to profile</button>
     <p id="library-message" role="status"></p><p id="library-coverage"></p>
     <label>Search name or ID <input id="inventory-search"></label>
-    <label>Source <select id="inventory-source"><option value="">All sources</option><option>club</option><option>sbc-storage</option></select></label>
+    <label>Source <select id="inventory-source"><option value="">All sources</option><option value="club">Club</option><option value="sbc-storage">SBC storage</option></select></label>
     <label><input type="checkbox" id="protected-only">Protected only</label>
     <label><input type="checkbox" id="stale-only">Missing or not rechecked only</label>
-    <div id="inventory-list"></div>
+    <label>Tradeability <select id="inventory-tradeable"><option value="">All tradeability</option><option value="true">Tradeable</option><option value="false">Untradeable</option><option value="unknown">Unknown</option></select></label>
+    <p id="inventory-count" role="status"></p><div id="inventory-list"></div>
     <fieldset><legend>Reviewed inventory export</legend><div id="export-fields"></div>
     <button id="inventory-preview">Review selected fields</button><pre id="inventory-preview-text" hidden></pre>
     <button id="inventory-download" disabled>Download reviewed inventory JSON</button></fieldset>
@@ -46,33 +47,62 @@ export function mountLibrary(root: HTMLElement, getImport: () => ImportSnapshot 
     select.replaceChildren(new Option('Choose a profile', ''), ...state.profiles.map(p => new Option(p.label, p.id)));
     select.value = selected;
     const p = state.profiles.find(p => p.id === select.value);
-    el('library-coverage').textContent = p?.latest ? `Last saved import: ${p.latest.status}; club: ${p.latest.coverage.club}; SBC storage: ${p.latest.coverage['sbc-storage']}; ${p.latest.savedAt}. ${p.latest.problem ?? ''} Saved records: ${p.items.length}. Coverage describes that import only; retained records may be stale.` : 'No saved import in this profile.';
+    el('library-coverage').textContent = p?.latest ? `Last saved import: ${p.latest.status}; club: ${p.latest.coverage.club}; SBC storage: ${p.latest.coverage['sbc-storage']}; ${new Date(p.latest.savedAt).toLocaleString()}. ${p.latest.problem ?? ''} Saved records: ${p.items.length}. Coverage describes that import only; retained records may be stale.` : 'No saved import in this profile.';
     const list = el('inventory-list'); list.replaceChildren();
-    const query = el<HTMLInputElement>('inventory-search').value.toLowerCase();
+    const query = el<HTMLInputElement>('inventory-search').value.trim().toLowerCase();
     for (const item of p?.items ?? []) {
       const card = { ...item.reported, ...item.corrections };
       if (query && !`${card.name ?? ''} ${card.instanceId} ${card.definitionId}`.toLowerCase().includes(query)) continue;
       if (el<HTMLSelectElement>('inventory-source').value && card.provenance.source !== el<HTMLSelectElement>('inventory-source').value) continue;
       if (el<HTMLInputElement>('protected-only').checked && !item.protected) continue;
       if (el<HTMLInputElement>('stale-only').checked && item.freshness === 'seen') continue;
+      const tradeability = el<HTMLSelectElement>('inventory-tradeable').value;
+      if (tradeability && (card.tradeable === null ? 'unknown' : String(card.tradeable)) !== tradeability) continue;
       const row = document.createElement('section'); row.className = 'saved-item';
+      const title = document.createElement('h3'); title.textContent = card.name ?? 'Unknown name';
+      const identity = document.createElement('p'); identity.className = 'item-meta';
+      identity.textContent = `Instance: ${card.instanceId} · ${card.provenance.source === 'club' ? 'Club' : 'SBC storage'}`;
+      const freshness = document.createElement('p'); freshness.className = 'item-meta';
+      const freshnessLabels = { seen: 'Seen in last saved import', 'not-rechecked': 'Not rechecked — source import incomplete', 'missing-unconfirmed': 'Missing, unconfirmed — no sale or submission inferred' };
+      freshness.textContent = `${freshnessLabels[item.freshness]}. Last seen: ${new Date(item.lastSeen).toLocaleString()}.`;
+      const corrected = document.createElement('p'); corrected.className = 'item-meta';
+      corrected.textContent = Object.keys(item.corrections).length ? `Manually corrected: ${Object.keys(item.corrections).join(', ')}. Imported evidence retained below.` : 'Imported evidence · no manual corrections';
       const text = document.createElement('p');
-      text.textContent = `${card.name ?? 'Unknown name'} · ${card.rating ?? 'Unknown rating'} · ${card.position ?? 'Unknown position'} · tradeable: ${card.tradeable ?? 'unknown'} · nation ID: ${card.nationId ?? 'unknown'} · league ID: ${card.leagueId ?? 'unknown'} · club ID: ${card.clubId ?? 'unknown'} · rarity ID: ${card.rarityId ?? 'unknown'} · ${card.provenance.source} · ${card.instanceId} · ${item.freshness} · last seen ${item.lastSeen}`;
+      text.textContent = `Rating: ${card.rating ?? 'Unknown'} · Position: ${card.position ?? 'Unknown'} · ${card.tradeable === null ? 'Tradeability unknown' : card.tradeable ? 'Tradeable' : 'Untradeable'}`;
       const protect = document.createElement('button'); protect.textContent = item.protected ? 'Unprotect player' : 'Protect player';
+      protect.setAttribute('aria-pressed', String(item.protected));
       protect.onclick = () => void run(() => updateProfile(current => ({ ...current, items: current.items.map(i => i.reported.instanceId === card.instanceId ? { ...i, protected: !i.protected } : i) })));
       const details = document.createElement('details');
       const summary = document.createElement('summary'); summary.textContent = 'Manual corrections and reported evidence';
       const evidence = document.createElement('pre'); evidence.textContent = JSON.stringify(item.reported, null, 2);
-      const label = document.createElement('label'); label.textContent = 'Corrections JSON (name, rating, position, tradeable). Use {} to clear. Overrides persist across re-imports; reported evidence stays separate.';
-      const input = document.createElement('textarea'); input.value = JSON.stringify(item.corrections); label.append(input);
-      const provenance = document.createElement('p'); provenance.textContent = item.correctedAt ? `User correction: ${item.correctedAt}` : 'No manual corrections.';
+      const help = document.createElement('p'); help.textContent = 'Choose Imported to clear an override, Unknown to mark a value unknown, or Custom to correct it. Corrections persist across imports.';
+      const fields = ['name', 'rating', 'position', 'tradeable'] as const;
+      const editors = fields.map(field => {
+        const label = document.createElement('label'); label.className = 'correction-field'; label.append(field);
+        const mode = document.createElement('select'); mode.setAttribute('aria-label', `${field} correction mode`);
+        mode.append(new Option('Imported', 'imported'), new Option('Unknown', 'unknown'), new Option('Custom', 'custom'));
+        const value = document.createElement(field === 'tradeable' ? 'select' : 'input');
+        value.setAttribute('aria-label', `${field} correction`);
+        if (value instanceof HTMLSelectElement) value.append(new Option('Tradeable', 'true'), new Option('Untradeable', 'false'));
+        else { value.type = field === 'rating' ? 'number' : 'text'; if (field === 'rating') { value.min = '1'; value.max = '99'; } else value.maxLength = 100; }
+        mode.value = !(field in item.corrections) ? 'imported' : item.corrections[field] === null ? 'unknown' : 'custom';
+        value.value = String(card[field] ?? (field === 'tradeable' ? true : ''));
+        value.disabled = mode.value !== 'custom';
+        mode.onchange = () => { value.disabled = mode.value !== 'custom'; };
+        label.append(mode, value); details.append(label);
+        return { field, mode, value };
+      });
+      const provenance = document.createElement('p'); provenance.textContent = item.correctedAt ? `User correction: ${new Date(item.correctedAt).toLocaleString()}` : 'No manual corrections.';
       const save = document.createElement('button'); save.textContent = 'Save manual corrections';
       save.onclick = () => void run(async () => {
-        const corrections = parseCorrections(JSON.parse(input.value));
+        const corrections = parseCorrections(Object.fromEntries(editors.filter(e => e.mode.value !== 'imported').map(({ field, mode, value }) => [field, mode.value === 'unknown' ? null : field === 'rating' ? Number(value.value) : field === 'tradeable' ? value.value === 'true' : value.value.trim()])));
         await updateProfile(current => ({ ...current, items: current.items.map(i => i.reported.instanceId === card.instanceId ? { ...i, corrections, correctedAt: Object.keys(corrections).length ? new Date().toISOString() : null } : i) }));
       });
-      details.append(summary, evidence, label, save, provenance);
-      row.append(text, protect, details);
+      const raw = document.createElement('details');
+      const rawSummary = document.createElement('summary'); rawSummary.textContent = 'Imported evidence (diagnostics)';
+      raw.append(rawSummary, evidence);
+      details.prepend(summary, help); details.append(save, provenance, raw);
+      row.append(title, text, identity, freshness, corrected, protect, details);
       if (item.freshness === 'missing-unconfirmed') {
         const removalLabel = document.createElement('label');
         const removalConfirm = document.createElement('input'); removalConfirm.type = 'checkbox';
@@ -89,9 +119,16 @@ export function mountLibrary(root: HTMLElement, getImport: () => ImportSnapshot 
       }
       list.append(row);
     }
+    const count = list.childElementCount;
+    el('inventory-count').textContent = p ? `${count} of ${p.items.length} saved instances · ${p.items.filter(i => i.protected).length} protected` : 'Choose or create a local profile to view saved players.';
+    if (p && !count) {
+      const empty = document.createElement('p');
+      empty.textContent = p.items.length ? 'No players match these filters. Clear search or change the filters.' : 'No players saved in this profile. Start an import, review it, then save it to this profile.';
+      list.append(empty);
+    }
   };
   select.onchange = () => { confirm.checked = false; invalidate(); render(); };
-  for (const id of ['inventory-search', 'inventory-source', 'protected-only', 'stale-only']) el(id).oninput = render;
+  for (const id of ['inventory-search', 'inventory-source', 'inventory-tradeable', 'protected-only', 'stale-only']) el(id).oninput = render;
   el('profile-create').onclick = () => void run(async () => {
     const label = el<HTMLInputElement>('profile-label').value.trim();
     if (!label || label.length > 60) throw new Error('Enter an invented profile label of 1–60 characters.');

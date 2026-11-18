@@ -7,3 +7,14 @@ button:focus-visible { outline: 3px solid #267cce; }
 #status { font-weight: 700; } label { display: inline-block; margin: 6px; }
 pre { max-height: 250px; overflow: auto; white-space: pre-wrap; background: #e7eeeb; padding: 12px; }
 article { padding: 10px; border: 1px solid #54756d; margin: 6px 0; } article span { display: inline-block; margin-right: 5px; }
+.saved-item { padding: 14px; margin: 12px 0; border: 1px solid #bacbc5; border-radius: 8px; background: white; overflow-wrap: anywhere; }
+.saved-item h3 { margin: 0 0 6px; font-size: 17px; }
+.saved-item p { margin: 6px 0; }
+.item-meta { color: #49635b; font-size: 12px; }
+.saved-item button[aria-pressed="true"] { background: #183e32; color: white; }
+.saved-item details { margin-top: 10px; }
+summary { cursor: pointer; }
+input:not([type="checkbox"]), select { max-width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #819b91; border-radius: 4px; }
+.correction-field { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.correction-field input { min-width: 0; }
+#inventory-count { font-weight: 600; }

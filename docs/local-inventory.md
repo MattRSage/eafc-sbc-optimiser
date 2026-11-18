@@ -22,7 +22,7 @@ Each record retains allowlisted reported fields, service provenance, last-seen t
 
 Coverage describes the latest saved traversal, not the completeness of all retained records. A failed or cancelled import retains prior cards and marks absent records as not rechecked when their sources are incomplete. Neither absence nor complete traversal establishes a sale or submission. Removal requires confirmation on the specific missing record.
 
-Protection flags survive imports. Manual overrides accept name, rating, position, and tradeable, with a user-correction timestamp. Null explicitly means unknown. Re-import updates reported evidence but keeps the overrides. Clearing the correction object restores the reported values. Identity and source fields cannot be corrected.
+Protection flags survive imports. Manual overrides accept name, rating, position, and tradeable, with a user-correction timestamp. Null explicitly means unknown. Re-import updates reported evidence but keeps the overrides. The correction form offers Imported (clear the override), Unknown (save null), and Custom (enter a value) for each field. Choosing Imported restores the reported value. Rows identify corrected fields, while a nested diagnostics section retains the imported evidence. Identity and source fields cannot be corrected.
 
 ## Persistence and export
 
